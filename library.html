@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Animal Elimination photo finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Rye&display=swap" rel="stylesheet">
+<style>
+  :root { --navy: #1B2140; --red: #B3202A; --gold: #F2B632; --teal: #1F8A84;
+          --page: #EEF1F8; --line: #CDD3E4; --ink: #1B2140; --soft: #59607A; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink);
+         font-family: Andika, "Trebuchet MS", sans-serif; font-size: 16px; line-height: 1.45; }
+  .top { background: var(--navy); color: #fff; padding: 28px 24px 22px; border-bottom: 6px solid var(--gold); }
+  .top h1 { font-family: Rye, Rockwell, Georgia, serif; font-weight: 400; color: var(--gold); font-size: 40px; margin: 0; }
+  .top p { margin: 6px 0 0; color: #D9DDEB; max-width: 64ch; }
+  .top a { color: var(--gold); }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; margin-bottom: 16px; }
+  h2 { font-family: Rye, Rockwell, Georgia, serif; font-weight: 400; font-size: 22px; margin: 0 0 8px; color: var(--red); }
+  .hint { color: var(--soft); margin: 0 0 12px; font-size: 14px; }
+  label.radio { display: block; margin: 4px 0; }
+  label.block { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; font-size: 14px; color: var(--soft); }
+  input, textarea { font: inherit; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; }
+  input:focus, textarea:focus, button:focus-visible { outline: 3px solid var(--gold); outline-offset: 1px; }
+  button { font: inherit; font-size: 15px; cursor: pointer; border-radius: 6px; border: 1px solid var(--line);
+           background: #fff; color: var(--ink); padding: 7px 14px; }
+  button.primary { background: var(--red); border-color: var(--red); color: #fff; font-weight: 700; }
+  button:disabled { opacity: .5; cursor: default; }
+  .bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  #prog { color: var(--soft); font-size: 14px; margin-left: 10px; }
+  #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; margin-top: 12px; }
+  .pc { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
+  .pc.off { opacity: .45; }
+  .pc .img { aspect-ratio: 1; background: #E4E7F0; display: grid; place-items: center; color: var(--soft);
+             font-size: 14px; text-align: center; padding: 8px; position: relative; }
+  .pc .img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .pc .body { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+  .pc .nm { font-weight: 700; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .pc .fn { color: var(--soft); font-size: 12px; }
+  .pc .src { color: var(--soft); font-size: 12px; word-break: break-word; }
+  .pc .src a { color: var(--teal); }
+  .pc .again { display: flex; gap: 4px; }
+  .pc .again input { flex: 1; min-width: 0; font-size: 13px; padding: 5px 7px; }
+  .pc .again button { font-size: 13px; padding: 5px 8px; }
+  .pc .own { font-size: 13px; color: var(--teal); cursor: pointer; text-decoration: underline; }
+  .pc .own input { display: none; }
+  .pc .nm input { width: 18px; height: 18px; accent-color: var(--red); }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Photo finder</h1>
+  <p>Finds a freely licensed photo on Wikipedia for each animal. Check them over, swap any you don't like, then download a zip and upload the photos into the animals folder. <a href="index.html">Back to setup</a></p>
+</header>
+<main>
+  <section class="card">
+    <h2>Which animals</h2>
+    <label class="radio"><input type="radio" name="which" value="missing" checked> Library animals that don't have a photo yet</label>
+    <label class="radio"><input type="radio" name="which" value="all"> Every animal in the library</label>
+    <label class="radio"><input type="radio" name="which" value="none"> Only the extra animals below</label>
+    <label class="block">Extra animals, one per line
+      <textarea id="extra" rows="4" placeholder="Narwhal&#10;Axolotl"></textarea></label>
+    <p style="margin:14px 0 0"><button class="primary" id="find">Find photos</button><span id="prog"></span></p>
+  </section>
+
+  <section class="card" id="results" hidden>
+    <div class="bar">
+      <h2>Photos</h2>
+      <button class="primary" id="zip" disabled>Download zip</button>
+    </div>
+    <p class="hint">Uncheck any photo you don't want. If one is wrong, type a different Wikipedia article name and search again, or use your own photo. The zip holds one file per checked animal plus a credits list.</p>
+    <div id="grid"></div>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+(function () {
+  const C = window.Carnival;
+  const CFG = window.CARNIVAL_CONFIG || { mysteries: [] };
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const MAX = 800;          // longest side of saved photos, in pixels
+  let cards = [];
+
+  const add = new URLSearchParams(location.search).get('add');
+  if (add) {
+    $('#extra').value = add.split(',').map(s => s.trim()).filter(Boolean).join('\n');
+    document.querySelector('input[value=none]').checked = true;
+  }
+
+  async function wikiLookup(titles) {
+    const out = {};
+    for (let i = 0; i < titles.length; i += 50) {
+      const chunk = titles.slice(i, i + 50);
+      const url = 'https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1' +
+        '&prop=pageimages&piprop=thumbnail%7Cname&pithumbsize=960&titles=' +
+        encodeURIComponent(chunk.join('|'));
+      const j = await (await fetch(url)).json();
+      const q = j.query || {};
+      const alias = {};
+      (q.normalized || []).forEach(n => { alias[n.from] = n.to; });
+      (q.redirects || []).forEach(n => { alias[n.from] = n.to; });
+      const pages = {};
+      Object.values(q.pages || {}).forEach(p => { pages[p.title] = p; });
+      chunk.forEach(t => {
+        let k = t;
+        for (let hop = 0; hop < 3 && alias[k]; hop++) k = alias[k];
+        const p = pages[k];
+        out[t] = p && p.thumbnail ? { thumb: p.thumbnail.source, file: p.pageimage, page: p.title } : null;
+      });
+    }
+    return out;
+  }
+
+  async function toJpeg(blobOrUrl) {
+    const blob = typeof blobOrUrl === 'string' ? await (await fetch(blobOrUrl)).blob() : blobOrUrl;
+    const bmp = await createImageBitmap(blob);
+    const scale = Math.min(1, MAX / Math.max(bmp.width, bmp.height));
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(bmp.width * scale);
+    cv.height = Math.round(bmp.height * scale);
+    const cx = cv.getContext('2d');
+    cx.fillStyle = '#fff';
+    cx.fillRect(0, 0, cv.width, cv.height);
+    cx.drawImage(bmp, 0, 0, cv.width, cv.height);
+    return new Promise(res => cv.toBlob(res, 'image/jpeg', 0.85));
+  }
+
+  function setPhoto(c, blob, credit) {
+    if (c.preview) URL.revokeObjectURL(c.preview);
+    c.blob = blob;
+    c.credit = credit;
+    c.preview = blob ? URL.createObjectURL(blob) : '';
+    c.on = !!blob;
+    drawCard(c);
+    updateZip();
+  }
+
+  async function fetchFor(c, title) {
+    c.state = 'Searching\u2026';
+    drawCard(c);
+    try {
+      const r = (await wikiLookup([title]))[title];
+      if (!r) { c.state = 'No free photo on that Wikipedia page. Try another name or use your own.'; setPhoto(c, null, ''); return; }
+      const blob = await toJpeg(r.thumb);
+      c.state = '';
+      setPhoto(c, blob, r.file ? 'https://commons.wikimedia.org/wiki/File:' + r.file.replace(/ /g, '_') : r.thumb);
+    } catch (e) {
+      c.state = 'Couldn\u2019t reach Wikipedia: ' + e.message;
+      setPhoto(c, null, '');
+    }
+  }
+
+  function drawCard(c) {
+    const d = c.el;
+    d.className = 'pc' + (c.on ? '' : ' off');
+    d.innerHTML =
+      '<div class="img">' + (c.preview ? '<img alt="' + esc(c.name) + '" src="' + c.preview + '">' : esc(c.state || 'No photo yet')) + '</div>' +
+      '<div class="body">' +
+        '<div class="nm"><span>' + esc(c.name) + '</span>' +
+          '<input type="checkbox" aria-label="Include ' + esc(c.name) + '"' + (c.on ? ' checked' : '') + (c.blob ? '' : ' disabled') + '></div>' +
+        '<div class="fn">' + esc(c.slug) + '.jpg</div>' +
+        (c.credit ? '<div class="src">Source: <a href="' + esc(c.credit) + '" target="_blank" rel="noopener">Wikimedia</a></div>' : '') +
+        '<div class="again"><input value="' + esc(c.title) + '" aria-label="Wikipedia article for ' + esc(c.name) + '"><button>Search again</button></div>' +
+        '<label class="own">Use my own photo<input type="file" accept="image/*"></label>' +
+      '</div>';
+    d.querySelector('.nm input').onchange = e => { c.on = e.target.checked; drawCard(c); updateZip(); };
+    const tIn = d.querySelector('.again input');
+    d.querySelector('.again button').onclick = () => { c.title = tIn.value.trim() || c.name; fetchFor(c, c.title); };
+    tIn.onkeydown = e => { if (e.key === 'Enter') { c.title = tIn.value.trim() || c.name; fetchFor(c, c.title); } };
+    d.querySelector('.own input').onchange = async e => {
+      const f = e.target.files[0];
+      if (!f) return;
+      try { c.state = ''; setPhoto(c, await toJpeg(f), 'Your own photo'); }
+      catch (err) { c.state = 'That file couldn\u2019t be read as an image.'; drawCard(c); }
+    };
+  }
+
+  function updateZip() {
+    const n = cards.filter(c => c.on && c.blob).length;
+    $('#zip').disabled = !n;
+    $('#zip').textContent = n ? 'Download zip (' + n + ' photo' + (n === 1 ? '' : 's') + ')' : 'Download zip';
+  }
+
+  $('#find').onclick = async () => {
+    const which = document.querySelector('input[name=which]:checked').value;
+    const prog = $('#prog');
+    $('#find').disabled = true;
+
+    let names = [];
+    if (which !== 'none') names = C.LIBRARY.map(e => e[0]).concat(CFG.mysteries.map(m => m.answer));
+    names = names.concat($('#extra').value.split(/\n|,/).map(s => s.trim()).filter(Boolean));
+    const seen = {};
+    names = names.filter(n => { const s = C.slugify(n); if (!s || seen[s]) return false; seen[s] = true; return true; });
+
+    if (which === 'missing') {
+      prog.textContent = 'Checking which photos you already have\u2026';
+      const extras = new Set($('#extra').value.split(/\n|,/).map(s => C.slugify(s)).filter(Boolean));
+      const found = await Promise.all(names.map(n => C.findImage(n)));
+      names = names.filter((n, i) => !found[i] || extras.has(C.slugify(n)));
+    }
+
+    if (!names.length) {
+      prog.textContent = 'Every animal already has a photo.';
+      $('#find').disabled = false;
+      return;
+    }
+
+    $('#results').hidden = false;
+    $('#grid').innerHTML = '';
+    cards = names.map(name => {
+      const c = { name, slug: C.slugify(name), title: C.wikiTitleFor(name), on: false, blob: null,
+                  preview: '', credit: '', state: 'Waiting\u2026', el: document.createElement('div') };
+      $('#grid').appendChild(c.el);
+      drawCard(c);
+      return c;
+    });
+
+    prog.textContent = 'Looking up ' + cards.length + ' animals on Wikipedia\u2026';
+    let lookup;
+    try { lookup = await wikiLookup([...new Set(cards.map(c => c.title))]); }
+    catch (e) {
+      prog.textContent = 'Couldn\u2019t reach Wikipedia. Check the internet connection and try again.';
+      $('#find').disabled = false;
+      return;
+    }
+
+    let done = 0;
+    const queue = cards.slice();
+    async function worker() {
+      while (queue.length) {
+        const c = queue.shift();
+        const r = lookup[c.title];
+        if (!r) { c.state = 'No free photo found. Try another name or use your own.'; drawCard(c); }
+        else {
+          try {
+            c.state = '';
+            setPhoto(c, await toJpeg(r.thumb), r.file ? 'https://commons.wikimedia.org/wiki/File:' + r.file.replace(/ /g, '_') : r.thumb);
+          } catch (e) { c.state = 'Download failed. Search again to retry.'; drawCard(c); }
+        }
+        done++;
+        prog.textContent = 'Downloaded ' + done + ' of ' + cards.length + '.';
+      }
+    }
+    await Promise.all([worker(), worker(), worker(), worker()]);
+    prog.textContent = 'Done. Check the photos below.';
+    $('#find').disabled = false;
+  };
+
+  $('#zip').onclick = async () => {
+    const zip = new JSZip();
+    const credits = [];
+    cards.filter(c => c.on && c.blob).forEach(c => {
+      zip.file(c.slug + '.jpg', c.blob);
+      credits.push(c.slug + '.jpg  ' + (c.credit || ''));
+    });
+    zip.file('photo-credits.txt', 'Photo sources (Wikimedia Commons pages list each photo\u2019s license and author)\n\n' + credits.join('\n') + '\n');
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'animal-photos.zip';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+})();
+</script>
+</body>
+</html>
