@@ -886,13 +886,13 @@
     if (s.head === 'drum') html = '<div class="label">And the answer is\u2026</div>';
     if (s.head === 'vanish') html = '<div class="label">' + (D.f.length > 2 ? 'None of these!' : 'Neither one!') + '</div>';
     if (s.head === 'aqua') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a) +
-      '!</span><span class="sub">Every water animal is correct!</span></div>';
-    if (s.head === 'dinoAns') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a) + '!</span></div>';
+      '</span><span class="sub">Every water animal is correct!</span></div>';
+    if (s.head === 'dinoAns') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a) + '</span></div>';
     if (s.head === 'what') html = '<div class="label">What happened to all the animals?!</div>';
     if (s.head === 'fossilAns') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a) +
-      '!</span><span class="sub">Any animal that can make a fossil is correct!</span></div>';
-    if (s.head === 'aquaNone') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a) + '!</span></div>';
-    if (s.head === 'answer') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a.toLowerCase()) + '!</span></div>';
+      '</span><span class="sub">Any animal that can make a fossil is correct!</span></div>';
+    if (s.head === 'aquaNone') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a) + '</span></div>';
+    if (s.head === 'answer') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a.toLowerCase()) + '</span></div>';
     const changed = !prev || prev.head !== s.head;
     if (changed) {
       h.innerHTML = html;
