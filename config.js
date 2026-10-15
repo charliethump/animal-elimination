@@ -8,7 +8,8 @@ window.CARNIVAL_CONFIG = {
   mysteries: [
     { label: 'Mystery Animal 1', answer: 'Lion' },
     { label: 'Mystery Animal 2', answer: 'Tortoise' },
-    { label: 'Mystery Animal 3', answer: 'Aquarium' },
+    // aquarium: true means every water animal the class guessed is a winner
+    { label: 'Mystery Animal 3', answer: 'The Aquarium', aquarium: true },
     { label: 'Mystery Animal 4', answer: 'Fossils' },
     { label: 'Mystery Animal 5', answer: 'Swan' }
   ],
