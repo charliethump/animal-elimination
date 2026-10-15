@@ -39,6 +39,46 @@
   #head .small { font-size: 3.4vh; color: #D9DDEB; display: block; line-height: 1.1; }
   #head .big { font-family: Rye, Rockwell, Georgia, serif; color: var(--gold); font-size: 9vh;
                line-height: 1; text-shadow: 0 .6vh 0 rgba(0,0,0,.35); }
+  #head .sub { display: block; font-size: 3.4vh; color: #fff; margin-top: .6vh; text-shadow: 0 .3vh 0 rgba(0,0,0,.35); }
+
+  /* ---------- aquarium round ---------- */
+  #aquarium { position: absolute; inset: 0; overflow: hidden; pointer-events: none; opacity: 0;
+              clip-path: inset(100% 0 0 0);
+              background: linear-gradient(#1C8FBF 0%, #0E5E8F 45%, #083B63 100%);
+              transition: clip-path 1.8s cubic-bezier(.5,0,.3,1), opacity .4s; }
+  #aquarium.on { opacity: 1; clip-path: inset(0 0 0 0); }
+  #stage.instant #aquarium { transition: none; }
+  #aquarium:not(.on) * { animation-play-state: paused; }
+  .rays i { position: absolute; top: -10vh; width: 9vw; height: 95vh; transform: skewX(-14deg);
+            background: linear-gradient(rgba(255,255,255,.22), transparent 85%);
+            animation: ray 7s ease-in-out infinite; }
+  @keyframes ray { 0%, 100% { opacity: .2; } 50% { opacity: .75; } }
+  .fish { position: absolute; left: 0; width: var(--s); animation: swimL linear infinite; }
+  .fish.ltr { animation-name: swimR; }
+  .fish .b { animation: bob 2.4s ease-in-out infinite; }
+  .fish svg { width: 100%; display: block; }
+  .fish.ltr svg { transform: scaleX(-1); }
+  @keyframes swimL { from { transform: translateX(110vw); } to { transform: translateX(-15vw); } }
+  @keyframes swimR { from { transform: translateX(-15vw); } to { transform: translateX(110vw); } }
+  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1.4vh); } }
+  .weed { position: absolute; bottom: 5vh; width: 2.4vw; transform-origin: bottom center;
+          animation: sway 4s ease-in-out infinite alternate; }
+  .weed svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  @keyframes sway { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
+  .bub { position: absolute; bottom: -5vh; border-radius: 50%; border: 2px solid rgba(255,255,255,.7);
+         background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.65), rgba(255,255,255,.08) 60%);
+         animation: rise linear infinite; }
+  .bub.burst { animation-iteration-count: 1; animation-fill-mode: both; }
+  @keyframes rise {
+    0% { transform: translate(0, 0); opacity: 0; }
+    8% { opacity: 1; }
+    50% { transform: translate(1.5vw, -55vh); }
+    100% { transform: translate(-1vw, -115vh); opacity: .5; }
+  }
+  .sand { position: absolute; left: 0; right: 0; bottom: 0; height: 12vh;
+          background: linear-gradient(#E9CB8F, #C9A566); }
+  .sand svg { position: absolute; left: 0; top: -3.9vh; width: 100%; height: 4vh; display: block; }
+
   #head.pop > * { animation: headPop .55s cubic-bezier(.3,1.6,.5,1); }
   @keyframes headPop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
@@ -173,7 +213,7 @@
   /* ================= sound ================= */
   // Drop a file named <sound>.mp3 into the sounds folder to replace any of these.
   const Sound = (function () {
-    const NAMES = ['appear', 'elimination', 'eliminate', 'finalvote', 'spotlight', 'drumroll', 'reveal', 'wrong'];
+    const NAMES = ['appear', 'elimination', 'eliminate', 'finalvote', 'spotlight', 'drumroll', 'reveal', 'wrong', 'aquarium'];
     const files = {};
     let ctx = null, master = null, muted = false, noiseBuf = null;
 
@@ -291,6 +331,13 @@
         });
         [60, 64, 67].forEach(m => osc('sawtooth', midi(m), t + 0.42, 1.0, 0.07, { filter: 1800 }));
       },
+      aquarium(t) {
+        SYN.reveal(t);
+        for (let i = 0; i < 16; i++) {
+          const f = 400 + Math.random() * 900;
+          osc('sine', f, t + 0.35 + i * 0.11 + Math.random() * 0.05, 0.09, 0.12, { to: f * 1.9 });
+        }
+      },
       wrong(t) {
         [51, 50, 49].forEach((m, i) =>
           osc('sawtooth', midi(m), t + i * 0.42, 0.36, 0.2, { filter: 900, attack: 0.03 }));
@@ -366,7 +413,7 @@
   })();
 
   /* ================= data + frames ================= */
-  let D, frames = [], cur = 0, tiles = [], answerIdx = -1, ansTile = -1;
+  let D, frames = [], cur = 0, tiles = [], answerIdx = -1, ansTile = -1, W = [];
   const RATIO = 1.2;   // tile height / width: square photo plus name strip
 
   function buildFrames() {
@@ -378,7 +425,11 @@
     f.push({ t: 'final' });
     D.f.forEach((_, k) => f.push({ t: 'spot', k }));
     f.push({ t: 'drum' });
-    if (D.f.includes(answerIdx)) f.push({ t: 'revealIn' });
+    if (D.q) {
+      if (W.length) f.push({ t: 'aquaIn' });
+      else { f.push({ t: 'vanish' }); f.push({ t: 'aquaOut' }); }
+    }
+    else if (D.f.includes(answerIdx)) f.push({ t: 'revealIn' });
     else { f.push({ t: 'vanish' }); f.push({ t: 'revealOut' }); }
     return f;
   }
@@ -401,6 +452,13 @@
         break;
       case 'drum': fins(); s.mode = 'final'; s.tallies = false; s.head = 'drum'; break;
       case 'vanish': s.mode = 'final'; s.tallies = false; s.head = 'vanish'; break;
+      case 'aquaIn':
+        W.forEach(i => s.vis.add(i));
+        s.mode = 'aqua'; s.tallies = false; s.head = 'aqua'; s.aqua = true; s.winners = new Set(W);
+        break;
+      case 'aquaOut':
+        s.mode = 'aqua'; s.tallies = false; s.head = 'aquaNone'; s.aqua = true;
+        break;
       case 'revealIn':
       case 'revealOut':
         s.vis.add(ansTile); s.mode = 'hero'; s.tallies = false; s.head = 'answer'; s.winner = ansTile;
@@ -415,29 +473,39 @@
     return { x: W * 0.04, y: H * 0.19, w: W * 0.92, h: H * 0.78 };
   }
 
-  let boardSlots = [];
-  function computeBoard() {
-    const a = boardArea(), n = D.g.length;
+  // Lays n tiles out in the biggest grid that fits area a
+  function gridSlots(a, n, scale, bottom) {
+    if (!n) return [];
     let best = null;
     for (let c = 1; c <= n; c++) {
       const r = Math.ceil(n / c);
       const cellW = a.w / c, cellH = a.h / r;
-      const w = Math.min(cellW, cellH / RATIO) * 0.8;
+      const w = Math.min(cellW, cellH / RATIO) * scale;
       if (!best || w > best.w) best = { c, r, w, cellW, cellH };
     }
-    boardSlots = [];
+    const out = [];
+    const y0 = bottom ? a.y + a.h - best.r * best.cellH : a.y + (a.h - best.r * best.cellH) / 2;
     for (let i = 0; i < n; i++) {
       const row = Math.floor(i / best.c), col = i % best.c;
       const inRow = Math.min(best.c, n - row * best.c);
-      const rowW = inRow * best.cellW;
-      const x0 = a.x + (a.w - rowW) / 2;
-      const y0 = a.y + (a.h - best.r * best.cellH) / 2;
-      boardSlots.push({
+      const x0 = a.x + (a.w - inRow * best.cellW) / 2;
+      out.push({
         x: x0 + col * best.cellW + (best.cellW - best.w) / 2,
-        y: y0 + row * best.cellH + (best.cellH - best.w * RATIO) / 2,
+        y: y0 + row * best.cellH + (best.cellH - best.w * RATIO) / (bottom ? 1.15 : 2),
         w: best.w, h: best.w * RATIO
       });
     }
+    return out;
+  }
+
+  let boardSlots = [], finalSlots = [], aquaSlots = [];
+  function computeBoard() {
+    const a = boardArea();
+    boardSlots = gridSlots(a, D.g.length, 0.8);
+    finalSlots = D.f.length > 3 ? gridSlots(a, D.f.length, 0.85) : [];
+    // Aquarium winners rest along the bottom of the screen, on the sand
+    const H = innerHeight, Wd = innerWidth;
+    aquaSlots = gridSlots({ x: Wd * 0.04, y: H * 0.42, w: Wd * 0.92, h: H * 0.56 }, W.length, 0.85, true);
   }
 
   function rectFor(i, s) {
@@ -456,8 +524,13 @@
       const w = lo, h = heightFor(w);
       return { x: a.x + (a.w - w) / 2, y: a.y + (a.h - h) / 2, w, h };
     }
+    if (s.mode === 'aqua') {
+      const j = W.indexOf(i);
+      if (j >= 0) return aquaSlots[j];
+    }
     if (s.mode !== 'board') {
       const j = D.f.indexOf(i);
+      if (j >= 0 && finalSlots.length) return finalSlots[j];
       if (j >= 0) {
         const F = D.f.length;
         let w = Math.min(a.w / F * 0.78, a.h / RATIO * 0.78);
@@ -472,6 +545,66 @@
       }
     }
     return boardSlots[i] || rectFor(i, { mode: 'hero' });
+  }
+
+  /* ================= aquarium scene ================= */
+  function buildAquarium() {
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    let h = '<div class="rays">';
+    for (let i = 0; i < 6; i++) h += '<i style="left:' + (6 + i * 16) + '%;animation-delay:' + (-i * 1.2) + 's"></i>';
+    h += '</div>';
+
+    const greens = ['#2F8F5B', '#3BA46B', '#22764A', '#4CB57A'];
+    for (let i = 0; i < 14; i++) {
+      h += '<div class="weed" style="left:' + rnd(0, 97).toFixed(1) + 'vw;height:' + rnd(16, 36).toFixed(1) +
+        'vh;animation-duration:' + rnd(3, 5.5).toFixed(2) + 's;animation-delay:' + (-rnd(0, 5)).toFixed(2) + 's">' +
+        '<svg viewBox="0 0 20 100" preserveAspectRatio="none"><path d="M10 100 C2 82 18 66 10 48 C3 32 16 16 10 2" ' +
+        'fill="none" stroke="' + greens[i % 4] + '" stroke-width="6" stroke-linecap="round"/></svg></div>';
+    }
+
+    const fishColors = [['#F28C28', '#FFD08A'], ['#F2B632', '#FFF0B3'], ['#E8556D', '#FFC2CC'],
+                        ['#3BB3A9', '#C5F3EE'], ['#8A7FF5', '#DCD8FF'], ['#FF7A45', '#FFE1D1']];
+    for (let i = 0; i < 10; i++) {
+      const [c1, c2] = fishColors[i % fishColors.length];
+      const dur = rnd(14, 30);
+      h += '<div class="fish ' + (i % 2 ? 'ltr' : 'rtl') + '" style="top:' + rnd(16, 58).toFixed(1) + 'vh;--s:' +
+        rnd(3, 7).toFixed(1) + 'vw;animation-duration:' + dur.toFixed(1) + 's;animation-delay:' + (-rnd(0, dur)).toFixed(1) + 's">' +
+        '<div class="b" style="animation-delay:' + (-rnd(0, 2.4)).toFixed(2) + 's"><svg viewBox="0 0 100 60">' +
+        '<polygon points="70,30 98,8 92,30 98,52" fill="' + c1 + '"/>' +
+        '<ellipse cx="42" cy="30" rx="32" ry="19" fill="' + c1 + '"/>' +
+        '<path d="M34 12 Q44 2 56 12" fill="' + c1 + '"/>' +
+        '<ellipse cx="46" cy="32" rx="6" ry="15" fill="' + c2 + '" opacity=".8"/>' +
+        '<circle cx="22" cy="26" r="5" fill="#fff"/><circle cx="21" cy="26" r="2.5" fill="#1B2140"/>' +
+        '</svg></div></div>';
+    }
+
+    for (let i = 0; i < 34; i++) {
+      const sz = rnd(0.8, 2.6).toFixed(2), dur = rnd(6, 13);
+      h += '<span class="bub" style="left:' + rnd(0, 99).toFixed(1) + 'vw;width:' + sz + 'vw;height:' + sz +
+        'vw;animation-duration:' + dur.toFixed(1) + 's;animation-delay:' + (-rnd(0, dur)).toFixed(1) + 's"></span>';
+    }
+
+    h += '<div class="sand"><svg viewBox="0 0 100 10" preserveAspectRatio="none">' +
+      '<path d="M0 10 L0 6 Q8 1 16 5 T32 5 T48 4 T64 6 T80 4 T100 5 L100 10 Z" fill="#E9CB8F"/></svg></div>';
+
+    const aq = document.createElement('div');
+    aq.id = 'aquarium';
+    aq.innerHTML = h;
+    stage.insertBefore(aq, stage.firstChild);
+  }
+
+  function burstBubbles() {
+    const aq = $('#aquarium');
+    if (!aq || !aq.classList.contains('on')) return;
+    for (let i = 0; i < 30; i++) {
+      const b = document.createElement('span');
+      const sz = (0.8 + Math.random() * 2).toFixed(2);
+      b.className = 'bub burst';
+      b.style.cssText = 'left:' + (10 + Math.random() * 80).toFixed(1) + 'vw;width:' + sz + 'vw;height:' + sz +
+        'vw;animation-duration:' + (2.5 + Math.random() * 2).toFixed(2) + 's;animation-delay:' + (Math.random() * 0.8).toFixed(2) + 's';
+      aq.appendChild(b);
+      setTimeout(() => b.remove(), 5000);
+    }
   }
 
   /* ================= tiles ================= */
@@ -532,6 +665,9 @@
     if (s.head === 'final') html = '<div class="marquee">Final vote!</div>';
     if (s.head === 'drum') html = '<div class="label">And the answer is\u2026</div>';
     if (s.head === 'vanish') html = '<div class="label">' + (D.f.length > 2 ? 'None of these!' : 'Neither one!') + '</div>';
+    if (s.head === 'aqua') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a) +
+      '!</span><span class="sub">Every water animal wins!</span></div>';
+    if (s.head === 'aquaNone') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a) + '!</span></div>';
     if (s.head === 'answer') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a) + '!</span></div>';
     const changed = !prev || prev.head !== s.head;
     if (changed) {
@@ -570,7 +706,7 @@
       el.style.width = r.w + 'px';
       el.style.height = r.h + 'px';
       el.style.opacity = s.faded.has(i) ? FADE : 1;
-      el.classList.toggle('winner', s.winner === i);
+      el.classList.toggle('winner', s.winner === i || !!(s.winners && s.winners.has(i)));
       el.classList.toggle('no-tally', !s.tallies);
 
       const show = s.vis.has(i);
@@ -590,6 +726,7 @@
     });
 
     renderHead(s, animate, animate ? p : null);
+    if (D.q) $('#aquarium').classList.toggle('on', !!s.aqua);
 
     // ELIMINATION banner only plays going forward
     clearTimeout(bannerTimer);
@@ -608,9 +745,11 @@
     if (animate) {
       const t = frames[k].t;
       const sounds = { intro: 'appear', banner: 'elimination', elim: 'eliminate', final: 'finalvote',
-                       spot: 'spotlight', drum: 'drumroll', revealIn: 'reveal', revealOut: 'reveal', vanish: 'wrong' };
+                       spot: 'spotlight', drum: 'drumroll', revealIn: 'reveal', revealOut: 'reveal', vanish: 'wrong',
+                       aquaIn: 'aquarium', aquaOut: 'aquarium' };
       if (sounds[t]) Sound.play(sounds[t]);
       if (t === 'revealIn' || t === 'revealOut') setTimeout(Confetti.burst, t === 'revealOut' ? 350 : 150);
+      if (t === 'aquaIn' || t === 'aquaOut') setTimeout(burstBubbles, 900);
     }
 
     if (!animate) {
@@ -689,6 +828,12 @@
     D.e = (D.e || []).filter(i => i >= 0 && i < N && !D.f.includes(i));
     for (let i = 0; i < N; i++) if (!D.f.includes(i) && !D.e.includes(i)) D.e.push(i);
 
+    // Aquarium round: winners are the water animals, in final-vote order
+    if (D.q) {
+      const wset = new Set((D.w || []).filter(i => i >= 0 && i < N));
+      W = D.f.filter(i => wset.has(i));
+      buildAquarium();
+    }
     tiles = D.g.map((g, i) => makeTile(g[0], g[1], i, g[2]));
     answerIdx = D.g.findIndex(g => C.slugify(g[0]) === C.slugify(D.a));
     if (answerIdx >= 0) ansTile = answerIdx;

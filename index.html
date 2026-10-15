@@ -147,7 +147,7 @@
 
     <section class="card">
       <h3>Finalists</h3>
-      <p class="hint">Alt-click a row on the class page to mark or unmark it. The correct answer is always a finalist if the class guessed it. If fewer than two are marked, the rest are picked at random at Start.</p>
+      <p class="hint" id="finHint"></p>
       <ul class="plain" id="finList"></ul>
     </section>
 
@@ -260,8 +260,12 @@
   /* ---------- helpers ---------- */
   const answerName = () => (CFG.mysteries[M] || {}).answer || '';
   const answerLabel = () => (CFG.mysteries[M] || {}).label || 'Mystery Animal';
-  const isAnswer = r => !!r.name.trim() && C.slugify(r.name) === C.slugify(answerName());
-  const isFin = r => !!r.name.trim() && (r.fin || isAnswer(r));
+  // Aquarium round: every water animal is a correct answer and a finalist
+  const aquarium = () => !!(CFG.mysteries[M] || {}).aquarium;
+  const isWaterRow = r => r.water === true || (r.water !== false && C.isWater(r.name));
+  const isAnswer = r => !!r.name.trim() &&
+    (aquarium() ? isWaterRow(r) : C.slugify(r.name) === C.slugify(answerName()));
+  const isFin = r => !!r.name.trim() && (aquarium() ? isWaterRow(r) : (r.fin || isAnswer(r)));
   const filled = () => S.rows.filter(r => r.name.trim());
 
   function shuffle(a) {
@@ -299,15 +303,20 @@
     const now = Date.now();
     if (now - lastToggle < 350) return;   // Chromebooks can fire both click and right-click for Alt-click
     lastToggle = now;
-    if (!r.name.trim() || isAnswer(r)) return;
-    r.fin = !r.fin;
+    if (!r.name.trim()) return;
+    if (aquarium()) r.water = !isWaterRow(r);   // Alt-click means "counts as a water animal"
+    else if (isAnswer(r)) return;
+    else r.fin = !r.fin;
     save();
     updateDot(d, r);
     renderPanel();
   }
 
   function updateDot(d, r) {
-    d.querySelector('.dot').classList.toggle('on', !!r.name.trim() && r.fin && !isAnswer(r));
+    const on = !!r.name.trim() && (aquarium()
+      ? r.water === true && !C.isWater(r.name)    // only water animals you added yourself
+      : r.fin && !isAnswer(r));
+    d.querySelector('.dot').classList.toggle('on', on);
   }
 
   function renderRows() {
@@ -339,6 +348,7 @@
       nameIn.addEventListener('input', () => {
         r.name = nameIn.value;
         r.live = null;
+        r.water = undefined;
         updateThumb(d, r);
         updateDot(d, r);
         changed();
@@ -410,9 +420,13 @@
     const rows = filled();
     const fins = rows.filter(isFin);
     if (rows.length < 3) out.push(['block', 'Add at least three animals.']);
-    if (rows.length >= 3 && fins.length < 2) out.push(['warn', (fins.length ? 'One more finalist' : 'Two finalists') + ' will be picked at random when you press Start.']);
-    if (fins.length > 3) out.push(['block', 'Mark no more than three finalists.']);
-    if (rows.length >= 3 && rows.length === fins.length) out.push(['block', 'Every animal is a finalist, so nothing gets eliminated.']);
+    if (aquarium()) {
+      if (rows.length >= 3 && !fins.length) out.push(['warn', 'No water animals yet. Two finalists will be picked at random, then the aquarium appears on its own.']);
+    } else {
+      if (rows.length >= 3 && fins.length < 2) out.push(['warn', (fins.length ? 'One more finalist' : 'Two finalists') + ' will be picked at random when you press Start.']);
+      if (fins.length > 3) out.push(['block', 'Mark no more than three finalists.']);
+      if (rows.length >= 3 && rows.length === fins.length) out.push(['block', 'Every animal is a finalist, so nothing gets eliminated.']);
+    }
     const seen = {};
     rows.forEach(r => {
       const s = C.slugify(r.name);
@@ -432,12 +446,13 @@
       if (await C.findImage(r.name)) return '';
       return r.live || (await C.findOnline(r.name)) || '';
     }));
-    const answerPhoto = (await C.findImage(answerName())) ? '' : ((await C.findOnline(answerName())) || '');
+    const answerPhoto = aquarium() || (await C.findImage(answerName())) ? '' : ((await C.findOnline(answerName())) || '');
     const idx = Object.fromEntries(rows.map((r, i) => [r.id, i]));
     // Fewer than two finalists marked: fill the rest at random
     const finIds = new Set(rows.filter(isFin).map(r => r.id));
     const pool = shuffle(rows.filter(r => !finIds.has(r.id)).map(r => r.id));
-    while (finIds.size < 2 && pool.length) finIds.add(pool.pop());
+    const need = aquarium() ? (finIds.size ? 0 : 2) : 2;   // aquarium: random pair only if no water animals
+    while (finIds.size < need && pool.length) finIds.add(pool.pop());
     let order;
     if (S.custom) { repairElim(); order = S.elim.slice(); }
     else order = shuffle(nonFinalistIds());
@@ -447,6 +462,8 @@
       g: rows.map((r, i) => photos[i] ? [r.name.trim(), parseInt(r.tally, 10) || 0, photos[i]]
                                        : [r.name.trim(), parseInt(r.tally, 10) || 0]),
       ai: answerPhoto || undefined,
+      q: aquarium() ? 1 : undefined,
+      w: aquarium() ? rows.map((r, i) => isWaterRow(r) ? i : -1).filter(i => i >= 0) : undefined,
       f: rows.map((r, i) => finIds.has(r.id) ? i : -1).filter(i => i >= 0),
       e: order.map(id => idx[id])
     };
@@ -478,7 +495,11 @@
 
     if (document.activeElement !== $('#pCls')) $('#pCls').value = CLS;
     $('#pMystery').innerHTML = mysteryOptions(M);
-    $('#pAnswer').innerHTML = M >= 0 ? 'Correct answer: <b>' + esc(answerName()) + '</b>' : '';
+    $('#pAnswer').innerHTML = M < 0 ? '' : 'Correct answer: <b>' + esc(answerName()) + '</b>' +
+      (aquarium() ? ' (every water animal wins)' : '');
+    $('#finHint').textContent = aquarium()
+      ? 'Aquarium round: every water animal is a finalist and a winner. Alt-click a row on the class page to count it as a water animal, or to un-count one.'
+      : 'Alt-click a row on the class page to mark or unmark it. The correct answer is always a finalist if the class guessed it. If fewer than two are marked, the rest are picked at random at Start.';
 
     const p = problems();
     $('#problems').innerHTML = p.map(x => '<li class="' + x[0] + '">' + esc(x[1]) + '</li>').join('') +
@@ -494,16 +515,18 @@
     }
 
     const fins = filled().filter(isFin);
-    const randomCount = Math.max(0, Math.min(2, filled().length - 1) - fins.length);
+    const randomCount = aquarium()
+      ? (fins.length ? 0 : Math.min(2, filled().length))
+      : Math.max(0, Math.min(2, filled().length - 1) - fins.length);
     $('#finList').innerHTML =
-      fins.map(r => '<li>' + esc(r.name.trim()) + (isAnswer(r) ? ' (correct answer)' : '') + '</li>').join('') +
+      fins.map(r => '<li>' + esc(r.name.trim()) + (isAnswer(r) ? (aquarium() ? ' (water animal)' : ' (correct answer)') : '') + '</li>').join('') +
       (randomCount ? '<li>Plus ' + randomCount + ' picked at random when you press Start</li>' : '');
 
     renderElim();
 
     clearTimeout(missingTimer);
     missingTimer = setTimeout(async () => {
-      const names = [...new Set([answerName(), ...filled().map(r => r.name.trim())].filter(Boolean))];
+      const names = [...new Set([aquarium() ? '' : answerName(), ...filled().map(r => r.name.trim())].filter(Boolean))];
       const found = await Promise.all(names.map(n => C.findImage(n)));
       const missing = names.filter((n, i) => !found[i]);
       const online = await Promise.all(missing.map(n => C.findOnline(n)));
@@ -611,7 +634,8 @@
     if (m < 0) m = Math.max(0, CFG.mysteries.findIndex(x => x.label === d.l));
     setClass(d.c || CLS || 'Class', m);
     nextId = 1;
-    const rows = d.g.map((g, i) => ({ id: nextId++, name: g[0], tally: String(g[1]), fin: (d.f || []).includes(i), live: g[2] || null }));
+    const rows = d.g.map((g, i) => ({ id: nextId++, name: g[0], tally: String(g[1]), fin: (d.f || []).includes(i), live: g[2] || null,
+      water: d.q ? (d.w || []).includes(i) : undefined }));
     S = { rows: rows.length ? rows : [blankRow()], elim: (d.e || []).map(i => rows[i] && rows[i].id).filter(Boolean), custom: true };
     save();
     renderAll();

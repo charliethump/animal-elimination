@@ -67,6 +67,7 @@
     if (!slug) return Promise.resolve(null);
     if (imageCache[slug]) return imageCache[slug];
     imageCache[slug] = new Promise(resolve => {
+      setTimeout(() => resolve(null), 4000);   // never let a stalled request hold things up
       let i = 0;
       const tryNext = () => {
         if (i >= EXTS.length) return resolve(null);
@@ -136,6 +137,23 @@
     return data;
   }
 
+  // Animals that count as water animals for the aquarium round (broad: lives in
+  // or spends most of its life in water). Alt-click on the setup page overrides.
+  const WATER = new Set([
+    'fish', 'goldfish', 'clownfish', 'pufferfish', 'blowfish', 'angelfish', 'catfish', 'salmon', 'trout', 'tuna',
+    'piranha', 'swordfish', 'anglerfish', 'betta', 'betta-fish', 'koi', 'guppy', 'minnow', 'bass', 'cod', 'carp',
+    'shark', 'great-white-shark', 'hammerhead', 'hammerhead-shark', 'whale-shark', 'whale', 'blue-whale',
+    'humpback-whale', 'killer-whale', 'orca', 'beluga', 'narwhal', 'dolphin', 'porpoise',
+    'octopus', 'squid', 'jellyfish', 'crab', 'hermit-crab', 'lobster', 'shrimp', 'prawn', 'crayfish', 'clam',
+    'oyster', 'mussel', 'scallop', 'starfish', 'sea-star', 'sea-urchin', 'sea-cucumber', 'sea-anemone', 'coral',
+    'seahorse', 'sea-horse', 'stingray', 'manta-ray', 'ray', 'eel', 'electric-eel', 'moray-eel', 'sea-slug',
+    'seal', 'sea-lion', 'walrus', 'otter', 'sea-otter', 'river-otter', 'manatee', 'dugong', 'beaver', 'platypus',
+    'polar-bear', 'penguin', 'frog', 'toad', 'tadpole', 'newt', 'axolotl', 'turtle', 'sea-turtle',
+    'alligator', 'crocodile', 'hippo', 'hippopotamus', 'duck', 'swan', 'goose', 'pelican', 'puffin',
+    'water-snake', 'sea-snake', 'anaconda', 'snapping-turtle', 'leech', 'water-bug'
+  ]);
+  function isWater(name) { return WATER.has(slugify(name)); }
+
   // Live photo lookup for animals that don't have a photo in the repo yet.
   // Only accepts Wikipedia pages for real living things (pages whose Wikidata
   // entry has a scientific name or taxon rank), so a silly or rude guess
@@ -166,5 +184,5 @@
     return liveCache[slug];
   }
 
-  window.Carnival = { LIBRARY, slugify, wikiTitleFor, findImage, findOnline, encodeData, decodeData };
+  window.Carnival = { LIBRARY, slugify, wikiTitleFor, findImage, findOnline, isWater, encodeData, decodeData };
 })();
