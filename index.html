@@ -147,7 +147,7 @@
 
     <section class="card">
       <h3>Finalists</h3>
-      <p class="hint">Alt-click a row on the class page to mark or unmark it. The correct answer is always a finalist if the class guessed it.</p>
+      <p class="hint">Alt-click a row on the class page to mark or unmark it. The correct answer is always a finalist if the class guessed it. If fewer than two are marked, the rest are picked at random at Start.</p>
       <ul class="plain" id="finList"></ul>
     </section>
 
@@ -160,7 +160,7 @@
 
     <section class="card" id="missingCard" hidden>
       <h3>Missing photos</h3>
-      <p class="hint">These show as a plain letter card until you upload a photo into the animals folder.</p>
+      <p class="hint">These aren't in the animals folder. The game uses a photo from Wikipedia when it can find one. Upload a photo to make it permanent and to use the game without internet.</p>
       <ul class="plain" id="missingList"></ul>
       <div class="btnrow"><a class="btn" id="findMissing" target="_blank" rel="noopener">Find photos for these</a></div>
     </section>
@@ -338,6 +338,7 @@
       const votesIn = d.querySelector('.votes');
       nameIn.addEventListener('input', () => {
         r.name = nameIn.value;
+        r.live = null;
         updateThumb(d, r);
         updateDot(d, r);
         changed();
@@ -368,11 +369,24 @@
   function updateThumb(d, r) {
     const th = d.querySelector('.thumb');
     const name = r.name.trim();
+    clearTimeout(d._live);
     if (!name) { th.innerHTML = ''; return; }
+    const show = url => { if (r.name.trim() === name && url) th.innerHTML = '<img alt="" src="' + esc(url) + '">'; };
+    if (r.live) { show(r.live); return; }
     th.textContent = name.charAt(0).toUpperCase();
     C.findImage(name).then(url => {
-      if (r.name.trim() !== name || !url) return;
-      th.innerHTML = '<img alt="" src="' + esc(url) + '">';
+      if (r.name.trim() !== name) return;
+      if (url) { show(url); return; }
+      // No photo in the repo: look one up online once typing pauses
+      d._live = setTimeout(() => {
+        C.findOnline(name).then(live => {
+          if (r.name.trim() !== name || !live) return;
+          r.live = live;
+          save();
+          show(live);
+          renderPanel();
+        });
+      }, 700);
     });
   }
 
@@ -396,7 +410,7 @@
     const rows = filled();
     const fins = rows.filter(isFin);
     if (rows.length < 3) out.push(['block', 'Add at least three animals.']);
-    if (fins.length < 2) out.push(['block', 'Alt-click at least two finalists.']);
+    if (rows.length >= 3 && fins.length < 2) out.push(['warn', (fins.length ? 'One more finalist' : 'Two finalists') + ' will be picked at random when you press Start.']);
     if (fins.length > 3) out.push(['block', 'Mark no more than three finalists.']);
     if (rows.length >= 3 && rows.length === fins.length) out.push(['block', 'Every animal is a finalist, so nothing gets eliminated.']);
     const seen = {};
@@ -412,16 +426,28 @@
   const canStart = () => !problems().some(p => p[0] === 'block');
 
   /* ---------- link data ---------- */
-  function buildData() {
+  async function buildData() {
     const rows = filled();
+    const photos = await Promise.all(rows.map(async r => {
+      if (await C.findImage(r.name)) return '';
+      return r.live || (await C.findOnline(r.name)) || '';
+    }));
+    const answerPhoto = (await C.findImage(answerName())) ? '' : ((await C.findOnline(answerName())) || '');
     const idx = Object.fromEntries(rows.map((r, i) => [r.id, i]));
+    // Fewer than two finalists marked: fill the rest at random
+    const finIds = new Set(rows.filter(isFin).map(r => r.id));
+    const pool = shuffle(rows.filter(r => !finIds.has(r.id)).map(r => r.id));
+    while (finIds.size < 2 && pool.length) finIds.add(pool.pop());
     let order;
     if (S.custom) { repairElim(); order = S.elim.slice(); }
     else order = shuffle(nonFinalistIds());
+    order = order.filter(id => !finIds.has(id));
     return {
       v: 1, c: CLS, l: answerLabel(), a: answerName(),
-      g: rows.map(r => [r.name.trim(), parseInt(r.tally, 10) || 0]),
-      f: rows.map((r, i) => isFin(r) ? i : -1).filter(i => i >= 0),
+      g: rows.map((r, i) => photos[i] ? [r.name.trim(), parseInt(r.tally, 10) || 0, photos[i]]
+                                       : [r.name.trim(), parseInt(r.tally, 10) || 0]),
+      ai: answerPhoto || undefined,
+      f: rows.map((r, i) => finIds.has(r.id) ? i : -1).filter(i => i >= 0),
       e: order.map(id => idx[id])
     };
   }
@@ -429,7 +455,7 @@
   async function gameUrl() {
     const url = new URL('play.html', location.href);
     url.search = '';
-    url.hash = await C.encodeData(buildData());
+    url.hash = await C.encodeData(await buildData());
     return url.href;
   }
 
@@ -455,9 +481,8 @@
     $('#pAnswer').innerHTML = M >= 0 ? 'Correct answer: <b>' + esc(answerName()) + '</b>' : '';
 
     const p = problems();
-    $('#problems').innerHTML = p.length
-      ? p.map(x => '<li class="' + x[0] + '">' + esc(x[1]) + '</li>').join('')
-      : '<li class="ok">Ready. Press Start on the class page.</li>';
+    $('#problems').innerHTML = p.map(x => '<li class="' + x[0] + '">' + esc(x[1]) + '</li>').join('') +
+      (canStart() ? '<li class="ok">Ready. Press Start on the class page.</li>' : '');
 
     if (!ready()) {
       $('#finList').innerHTML = '';
@@ -469,9 +494,10 @@
     }
 
     const fins = filled().filter(isFin);
-    $('#finList').innerHTML = fins.length
-      ? fins.map(r => '<li>' + esc(r.name.trim()) + (isAnswer(r) ? ' (correct answer)' : '') + '</li>').join('')
-      : '<li>None yet.</li>';
+    const randomCount = Math.max(0, Math.min(2, filled().length - 1) - fins.length);
+    $('#finList').innerHTML =
+      fins.map(r => '<li>' + esc(r.name.trim()) + (isAnswer(r) ? ' (correct answer)' : '') + '</li>').join('') +
+      (randomCount ? '<li>Plus ' + randomCount + ' picked at random when you press Start</li>' : '');
 
     renderElim();
 
@@ -480,8 +506,10 @@
       const names = [...new Set([answerName(), ...filled().map(r => r.name.trim())].filter(Boolean))];
       const found = await Promise.all(names.map(n => C.findImage(n)));
       const missing = names.filter((n, i) => !found[i]);
+      const online = await Promise.all(missing.map(n => C.findOnline(n)));
       $('#missingCard').hidden = !missing.length;
-      $('#missingList').innerHTML = missing.map(n => '<li><code>' + esc(C.slugify(n)) + '.jpg</code> for ' + esc(n) + '</li>').join('');
+      $('#missingList').innerHTML = missing.map((n, i) => '<li><code>' + esc(C.slugify(n)) + '.jpg</code> for ' + esc(n) +
+        (online[i] ? ' (using an online photo for now)' : ' (no photo found, shows a letter card)') + '</li>').join('');
       $('#findMissing').href = 'library.html?add=' + encodeURIComponent(missing.join(','));
     }, 250);
   }
@@ -583,7 +611,7 @@
     if (m < 0) m = Math.max(0, CFG.mysteries.findIndex(x => x.label === d.l));
     setClass(d.c || CLS || 'Class', m);
     nextId = 1;
-    const rows = d.g.map((g, i) => ({ id: nextId++, name: g[0], tally: String(g[1]), fin: (d.f || []).includes(i) }));
+    const rows = d.g.map((g, i) => ({ id: nextId++, name: g[0], tally: String(g[1]), fin: (d.f || []).includes(i), live: g[2] || null }));
     S = { rows: rows.length ? rows : [blankRow()], elim: (d.e || []).map(i => rows[i] && rows[i].id).filter(Boolean), custom: true };
     save();
     renderAll();

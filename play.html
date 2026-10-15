@@ -56,15 +56,15 @@
   /* ---------- tiles ---------- */
   .tile { position: absolute; container-type: size;
           transition: left var(--move), top var(--move), width var(--move), height var(--move), opacity .6s; }
-  .frame { position: absolute; inset: 0; background: var(--ticket); border-radius: 4cqw;
-           border: 3cqw solid var(--gold); box-shadow: 0 2cqw 0 rgba(0,0,0,.35);
+  .frame { position: absolute; inset: 0; background: var(--ticket); border-radius: min(4cqw, 2vh);
+           border: min(3cqw, 1.4vh) solid var(--gold); box-shadow: 0 min(2cqw, 1vh) 0 rgba(0,0,0,.35);
            display: flex; flex-direction: column; overflow: hidden; }
-  .photo { flex: 0 0 auto; aspect-ratio: 1; width: 100%; background: #D9D2BF; position: relative; }
+  .photo { flex: 1 1 auto; min-height: 0; width: 100%; background: #D9D2BF; position: relative; }
   .photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .photo .none { position: absolute; inset: 0; display: grid; place-items: center;
                  font-family: Rye, Rockwell, Georgia, serif; color: var(--navy); font-size: 40cqw; opacity: .35; }
-  .name { flex: 1; display: grid; place-items: center; color: var(--navy); font-weight: 700;
-          font-size: 11cqw; line-height: 1; padding: 0 3cqw; text-align: center; white-space: nowrap;
+  .name { flex: 0 0 min(20cqw, 12vh); display: grid; place-items: center; color: var(--navy); font-weight: 700;
+          font-size: min(11cqw, 7vh); line-height: 1; padding: 0 3cqw; text-align: center; white-space: nowrap;
           overflow: hidden; text-overflow: ellipsis; }
   .tally { position: absolute; top: -8cqw; right: -8cqw; width: 32cqw; height: 32cqw; border-radius: 50%;
            background: var(--red); border: 2.5cqw solid var(--gold); display: grid; place-items: center;
@@ -74,8 +74,8 @@
   .tile.winner { z-index: 5; }
   .tile.winner .frame { animation: glow 1.4s ease-in-out infinite; }
   @keyframes glow {
-    0%, 100% { box-shadow: 0 0 3cqw 1cqw rgba(242,182,50,.7), 0 2cqw 0 rgba(0,0,0,.35); }
-    50% { box-shadow: 0 0 9cqw 4cqw rgba(242,182,50,.95), 0 2cqw 0 rgba(0,0,0,.35); }
+    0%, 100% { box-shadow: 0 0 min(3cqw, 2vh) min(1cqw, .6vh) rgba(242,182,50,.7); }
+    50% { box-shadow: 0 0 min(9cqw, 6vh) min(4cqw, 2.5vh) rgba(242,182,50,.95); }
   }
 
   .tile.pop { animation: popIn .6s cubic-bezier(.3,1.5,.5,1) both; }
@@ -104,8 +104,8 @@
   /* ---------- ELIMINATION banner ---------- */
   #banner { position: absolute; inset: 0; display: grid; place-items: center; z-index: 20;
             background: rgba(10,12,30,.55); pointer-events: none; }
-  #banner div { font-family: Rye, Rockwell, Georgia, serif; font-size: 14vw; color: #fff;
-                background: var(--red); padding: 1vh 4vw; border: 1.6vh dotted var(--gold);
+  #banner div { font-family: Rye, Rockwell, Georgia, serif; font-size: min(8vw, 22vh); color: #fff;
+                white-space: nowrap; background: var(--red); padding: 1vh 3vw; border: 1.6vh dotted var(--gold);
                 border-radius: 2vh; text-shadow: 0 1vh 0 rgba(0,0,0,.35);
                 box-shadow: 0 0 8vh rgba(179,32,42,.9); }
   #banner.slam { animation: veil 2.8s both; }
@@ -400,12 +400,8 @@
         D.f.forEach((i, j) => { if (j !== fr.k) s.faded.add(i); });
         break;
       case 'drum': fins(); s.mode = 'final'; s.tallies = false; s.head = 'drum'; break;
-      case 'revealIn':
-        fins(); s.mode = 'final'; s.tallies = false; s.head = 'answer';
-        D.f.forEach(i => { if (i !== answerIdx) s.faded.add(i); });
-        s.winner = answerIdx;
-        break;
       case 'vanish': s.mode = 'final'; s.tallies = false; s.head = 'vanish'; break;
+      case 'revealIn':
       case 'revealOut':
         s.vis.add(ansTile); s.mode = 'hero'; s.tallies = false; s.head = 'answer'; s.winner = ansTile;
         break;
@@ -447,8 +443,18 @@
   function rectFor(i, s) {
     const a = boardArea();
     if (s.mode === 'hero' && i === ansTile) {
-      const w = Math.min(a.w * 0.5, a.h / RATIO * 0.92);
-      return { x: a.x + (a.w - w) / 2, y: a.y + (a.h - w * RATIO) / 2, w, h: w * RATIO };
+      // Card takes the photo's own shape, so a wide photo shows uncropped
+      const ar = (tiles[i] && tiles[i].ar) || 1;
+      const maxW = a.w * 0.85, maxH = a.h * 0.95;
+      // Matches the CSS: border min(3cqw, 1.4vh), name strip min(20cqw, 12vh)
+      const heightFor = w => {
+        const b = Math.min(w * 0.03, innerHeight * 0.014);
+        return (w - 2 * b) / ar + Math.min(w * 0.2, innerHeight * 0.12) + 2 * b;
+      };
+      let lo = 10, hi = maxW;
+      for (let n = 0; n < 30; n++) { const mid = (lo + hi) / 2; if (heightFor(mid) <= maxH) lo = mid; else hi = mid; }
+      const w = lo, h = heightFor(w);
+      return { x: a.x + (a.w - w) / 2, y: a.y + (a.h - h) / 2, w, h };
     }
     if (s.mode !== 'board') {
       const j = D.f.indexOf(i);
@@ -469,23 +475,36 @@
   }
 
   /* ================= tiles ================= */
-  function makeTile(name, tally, i) {
+  function makeTile(name, tally, i, onlineUrl) {
     const el = document.createElement('div');
     el.className = 'tile';
     el.hidden = true;
     el.innerHTML = '<div class="frame"><div class="photo"><div class="none">' + esc(name.trim().charAt(0).toUpperCase()) +
       '</div></div><div class="name">' + esc(name) + '</div></div>' +
       (tally === null ? '' : '<div class="tally">' + esc(tally) + '</div>');
+    const t = { el, timer: 0, ar: 1 };
     C.findImage(name).then(url => {
+      url = url || onlineUrl;
       if (!url) return;
       const img = new Image();
       img.alt = name;
+      img.onload = () => {
+        el.querySelector('.photo').appendChild(img);
+        const none = el.querySelector('.none');
+        if (none) none.remove();
+        if (img.naturalWidth && img.naturalHeight) t.ar = img.naturalWidth / img.naturalHeight;
+        // If the reveal is already on screen, reshape to the real photo
+        const s = frames.length ? stateFor(cur) : null;
+        if (s && s.mode === 'hero' && s.winner === i) {
+          const r = rectFor(i, s);
+          el.style.left = r.x + 'px'; el.style.top = r.y + 'px';
+          el.style.width = r.w + 'px'; el.style.height = r.h + 'px';
+        }
+      };
       img.src = url;
-      el.querySelector('.photo').appendChild(img);
-      el.querySelector('.none').remove();
     });
     stage.appendChild(el);
-    return { el, timer: 0 };
+    return t;
   }
 
   function puff(r) {
@@ -524,6 +543,17 @@
   }
 
   /* ================= render ================= */
+  // Shrinks the ELIMINATION! text if it would run past the screen edges
+  function fitBanner() {
+    const div = $('#banner div');
+    div.style.fontSize = '';
+    const max = innerWidth * 0.92;
+    if (div.offsetWidth > max) {
+      const fs = parseFloat(getComputedStyle(div).fontSize);
+      div.style.fontSize = (fs * max / div.offsetWidth) + 'px';
+    }
+  }
+
   let bannerTimer = 0;
 
   function render(k, animate) {
@@ -568,6 +598,7 @@
     banner.classList.remove('slam');
     if (animate && frames[k].t === 'banner') {
       banner.hidden = false;
+      fitBanner();
       void banner.offsetWidth;
       banner.classList.add('slam');
       bannerTimer = setTimeout(() => { banner.hidden = true; banner.classList.remove('slam'); }, 2800);
@@ -658,10 +689,10 @@
     D.e = (D.e || []).filter(i => i >= 0 && i < N && !D.f.includes(i));
     for (let i = 0; i < N; i++) if (!D.f.includes(i) && !D.e.includes(i)) D.e.push(i);
 
-    tiles = D.g.map((g, i) => makeTile(g[0], g[1], i));
+    tiles = D.g.map((g, i) => makeTile(g[0], g[1], i, g[2]));
     answerIdx = D.g.findIndex(g => C.slugify(g[0]) === C.slugify(D.a));
     if (answerIdx >= 0) ansTile = answerIdx;
-    else { tiles.push(makeTile(D.a, null, N)); ansTile = N; }
+    else { tiles.push(makeTile(D.a, null, N, D.ai)); ansTile = N; }
 
     $('#titleWhich').textContent = D.l || '';
     $('#titleCls').textContent = D.c || '';

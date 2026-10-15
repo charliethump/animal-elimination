@@ -136,5 +136,35 @@
     return data;
   }
 
-  window.Carnival = { LIBRARY, slugify, wikiTitleFor, findImage, encodeData, decodeData };
+  // Live photo lookup for animals that don't have a photo in the repo yet.
+  // Only accepts Wikipedia pages for real living things (pages whose Wikidata
+  // entry has a scientific name or taxon rank), so a silly or rude guess
+  // never puts a random picture on the projector.
+  const BLOCKED = new Set(['human', 'humans', 'person', 'people', 'man', 'woman', 'boy', 'girl',
+                           'baby', 'kid', 'kids', 'homo-sapiens', 'teacher']);
+  const liveCache = {};
+  function findOnline(name) {
+    const slug = slugify(name);
+    if (!slug || slug.length < 3 || BLOCKED.has(slug)) return Promise.resolve(null);
+    if (liveCache[slug]) return liveCache[slug];
+    liveCache[slug] = (async () => {
+      const title = wikiTitleFor(name.trim());
+      const url = 'https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1' +
+        '&prop=pageimages%7Cpageprops&piprop=thumbnail&pithumbsize=960&ppprop=wikibase_item' +
+        '&titles=' + encodeURIComponent(title);
+      const j = await (await fetch(url)).json();
+      const page = Object.values((j.query && j.query.pages) || {})[0];
+      if (!page || 'missing' in page || !page.thumbnail) return null;
+      const q = page.pageprops && page.pageprops.wikibase_item;
+      if (!q) return null;
+      const wd = await (await fetch('https://www.wikidata.org/w/api.php?action=wbgetentities&format=json' +
+        '&origin=*&props=claims&ids=' + q)).json();
+      const claims = (wd.entities && wd.entities[q] && wd.entities[q].claims) || {};
+      if (!claims.P225 && !claims.P105) return null;
+      return page.thumbnail.source;
+    })().catch(() => { delete liveCache[slug]; return null; });
+    return liveCache[slug];
+  }
+
+  window.Carnival = { LIBRARY, slugify, wikiTitleFor, findImage, findOnline, encodeData, decodeData };
 })();
