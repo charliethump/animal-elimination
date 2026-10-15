@@ -79,6 +79,34 @@
           background: linear-gradient(#E9CB8F, #C9A566); }
   .sand svg { position: absolute; left: 0; top: -3.9vh; width: 100%; height: 4vh; display: block; }
 
+  /* ---------- fossils round ---------- */
+  .fossil-art { position: absolute; inset: 0; z-index: 2; opacity: 0;
+                background:
+                  radial-gradient(circle at 20% 30%, rgba(110,91,67,.18) 0 2%, transparent 3%),
+                  radial-gradient(circle at 75% 70%, rgba(110,91,67,.15) 0 1.5%, transparent 2.5%),
+                  radial-gradient(circle at 60% 20%, rgba(255,255,255,.25) 0 1.5%, transparent 2.5%),
+                  radial-gradient(circle at 35% 80%, rgba(110,91,67,.12) 0 2.5%, transparent 3.5%),
+                  linear-gradient(160deg, #D9CCB2, #BFAE8E);
+                transition: opacity .35s ease-out var(--d, 0s); }
+  .fossil-art svg { position: absolute; inset: 8%; width: 84%; height: 84%; }
+  .fossil-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .tile.fossil .fossil-art { opacity: 1; }
+  .tile .frame, .tile .name { transition: background-color .35s var(--d, 0s), border-color .35s var(--d, 0s), color .35s var(--d, 0s); }
+  .tile.fossil .frame { background-color: #E4D8C0; border-color: #9C8B72; }
+  .tile.fossil .name { color: #5B4A36; }
+  .tile.fossilizing { animation: quake .7s ease-in-out var(--d, 0s) both; }
+  @keyframes quake {
+    0%, 100% { transform: translate(0, 0) rotate(0); }
+    15% { transform: translate(-3%, 1%) rotate(-3deg); }
+    30% { transform: translate(3%, -1%) rotate(3deg); }
+    45% { transform: translate(-2%, 1%) rotate(-2deg) scale(1.06); }
+    60% { transform: translate(2%, 0) rotate(1deg) scale(1.06); }
+    80% { transform: scale(.97); }
+  }
+  #stage.instant .fossil-art, #stage.instant .tile .frame, #stage.instant .tile .name { transition: none !important; }
+  #stage.instant .tile.fossilizing { animation: none !important; }
+  .puff.dust { background: #CDBA97; }
+
   #head.pop > * { animation: headPop .55s cubic-bezier(.3,1.6,.5,1); }
   @keyframes headPop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
@@ -213,7 +241,7 @@
   /* ================= sound ================= */
   // Drop a file named <sound>.mp3 into the sounds folder to replace any of these.
   const Sound = (function () {
-    const NAMES = ['appear', 'elimination', 'eliminate', 'finalvote', 'spotlight', 'drumroll', 'reveal', 'wrong', 'aquarium'];
+    const NAMES = ['appear', 'elimination', 'eliminate', 'finalvote', 'spotlight', 'drumroll', 'reveal', 'wrong', 'aquarium', 'fossilize', 'huh'];
     const files = {};
     let ctx = null, master = null, muted = false, noiseBuf = null;
 
@@ -331,6 +359,21 @@
         });
         [60, 64, 67].forEach(m => osc('sawtooth', midi(m), t + 0.42, 1.0, 0.07, { filter: 1800 }));
       },
+      fossilize(t) {
+        // low rumble under a run of rock cracks, timed to the ripple
+        noise(t, 1.8, 0.35, { type: 'lowpass', freq: 140 });
+        osc('sine', 55, t, 1.6, 0.4, { to: 40 });
+        const n = Math.min(D ? D.g.length : 6, 14);
+        for (let i = 0; i < n; i++) {
+          const ti = t + 0.15 + i * 0.15;
+          noise(ti, 0.12, 0.45, { type: 'highpass', freq: 2500 });
+          noise(ti, 0.25, 0.3, { freq: 600, to: 200, q: 1.5 });
+        }
+      },
+      huh(t) {
+        osc('triangle', midi(67), t, 0.22, 0.25, { to: midi(72), attack: 0.02 });
+        osc('triangle', midi(72), t + 0.28, 0.45, 0.25, { to: midi(79), attack: 0.02 });
+      },
       aquarium(t) {
         SYN.reveal(t);
         for (let i = 0; i < 16; i++) {
@@ -421,6 +464,13 @@
     const f = [{ t: 'title' }];
     for (let i = 1; i <= N; i++) f.push({ t: 'intro', n: i });
     f.push({ t: 'banner' });
+    if (D.fo) {
+      // Fossils round: everyone turns to stone, then everyone is correct
+      f.push({ t: 'fossilize' });
+      f.push({ t: 'what' });
+      f.push({ t: 'fossilAns' });
+      return f;
+    }
     for (let j = 1; j <= D.e.length; j++) f.push({ t: 'elim', n: j });
     f.push({ t: 'final' });
     D.f.forEach((_, k) => f.push({ t: 'spot', k }));
@@ -452,6 +502,12 @@
         break;
       case 'drum': fins(); s.mode = 'final'; s.tallies = false; s.head = 'drum'; break;
       case 'vanish': s.mode = 'final'; s.tallies = false; s.head = 'vanish'; break;
+      case 'fossilize': all(); s.fossil = true; s.tallies = false; break;
+      case 'what': all(); s.fossil = true; s.tallies = false; s.head = 'what'; break;
+      case 'fossilAns':
+        all(); s.fossil = true; s.tallies = false; s.head = 'fossilAns';
+        s.winners = new Set([...Array(N).keys()]);
+        break;
       case 'aquaIn':
         W.forEach(i => s.vis.add(i));
         s.mode = 'aqua'; s.tallies = false; s.head = 'aqua'; s.aqua = true; s.winners = new Set(W);
@@ -547,6 +603,111 @@
     return boardSlots[i] || rectFor(i, { mode: 'hero' });
   }
 
+  /* ================= fossil drawings ================= */
+  // Original line drawings in a stone palette. Each animal gets one at random.
+  const Fossils = (function () {
+    const INK = '#6E5B43', FILL = '#EADFC8', SHADE = '#B8A585';
+    // Stroke attributes; pass a width for thinner detail lines
+    const st = w => 'stroke="' + INK + '" stroke-width="' + (w || 2.4) + '" stroke-linecap="round" stroke-linejoin="round"';
+    const svg = inner => '<svg viewBox="0 0 100 100" aria-hidden="true">' + inner + '</svg>';
+
+    function ammonite() {
+      // Logarithmic spiral; the last turn is the shell's outer edge
+      const r = th => 4.5 * Math.exp(0.12 * th);
+      const pt = th => [44 + r(th) * Math.cos(th), 53 + r(th) * Math.sin(th)];
+      const path = (from, to) => {
+        let d = '';
+        for (let th = from; th <= to + 0.001; th += 0.1) { const [x, y] = pt(th); d += (d ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1); }
+        return d;
+      };
+      let ribs = '';
+      for (let th = 2 * Math.PI + 0.25; th <= 6 * Math.PI; th += 0.3) {
+        const [x1, y1] = pt(th), [x2, y2] = pt(th - 2 * Math.PI);
+        ribs += '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '"/>';
+      }
+      return svg('<path d="' + path(4 * Math.PI, 6 * Math.PI) + ' Z" fill="' + FILL + '" ' + st() + '/>' +
+        '<g ' + st(1.4) + ' opacity=".75">' + ribs + '</g>' +
+        '<path d="' + path(0, 6 * Math.PI) + '" fill="none" ' + st() + '/>');
+    }
+
+    function trilobite() {
+      let seg = '';
+      for (let y = 47; y <= 79; y += 4.5) {
+        const half = 27 - (y - 45) * 0.55;
+        seg += '<line x1="' + (50 - half).toFixed(1) + '" y1="' + y + '" x2="' + (50 + half).toFixed(1) + '" y2="' + y + '"/>';
+      }
+      return svg('<path d="M22 43 Q20 66 50 88 Q80 66 78 43 Z" fill="' + FILL + '" ' + st() + '/>' +
+        '<path d="M50 14 C24 14 16 34 19 43 L81 43 C84 34 76 14 50 14 Z" fill="' + FILL + '" ' + st() + '/>' +
+        '<g ' + st(1.6) + '>' + seg + '</g>' +
+        '<path d="M42 20 L42 84 M58 20 L58 84" fill="none" ' + st(1.8) + '/>' +
+        '<ellipse cx="34" cy="31" rx="4.5" ry="3.5" fill="' + SHADE + '" ' + st(1.6) + '/>' +
+        '<ellipse cx="66" cy="31" rx="4.5" ry="3.5" fill="' + SHADE + '" ' + st(1.6) + '/>');
+    }
+
+    function fishFossil() {
+      let ribs = '';
+      for (let x = 38; x <= 72; x += 4) {
+        const len = 15 - (x - 38) * 0.28;
+        ribs += '<path d="M' + x + ' 50 Q' + (x + 3) + ' ' + (50 - len * 0.6) + ' ' + (x + 6) + ' ' + (50 - len) + '"/>' +
+                '<path d="M' + x + ' 50 Q' + (x + 3) + ' ' + (50 + len * 0.6) + ' ' + (x + 6) + ' ' + (50 + len) + '"/>';
+      }
+      return svg('<path d="M10 50 Q16 32 34 36 L36 64 Q16 68 10 50 Z" fill="' + FILL + '" ' + st() + '/>' +
+        '<circle cx="21" cy="47" r="3.5" fill="' + SHADE + '" ' + st(1.6) + '/>' +
+        '<path d="M14 56 L28 55" fill="none" ' + st(1.6) + '/>' +
+        '<g fill="none" ' + st(1.7) + '>' + ribs + '</g>' +
+        '<path d="M34 50 L82 50" fill="none" ' + st(3) + '/>' +
+        '<path d="M82 50 L95 34 L91 50 L95 66 Z" fill="' + FILL + '" ' + st() + '/>' +
+        '<path d="M84 49 L93 38 M84 51 L93 62 M85 50 L92 50" fill="none" ' + st(1.2) + '/>');
+    }
+
+    function skull() {
+      let teeth = '';
+      for (let x = 26; x <= 76; x += 6) teeth += '<path d="M' + x + ' 63 L' + (x + 2.5) + ' 70 L' + (x + 5) + ' 63"/>';
+      return svg('<path d="M12 60 C10 40 28 26 52 26 C72 26 88 38 92 50 L91 58 C80 62 58 63 40 64 L20 64 Z" fill="' + FILL + '" ' + st() + '/>' +
+        '<path d="M22 68 L82 64 L84 72 C62 80 36 80 22 74 Z" fill="' + FILL + '" ' + st() + '/>' +
+        '<g fill="' + FILL + '" ' + st(1.5) + '>' + teeth + '</g>' +
+        '<ellipse cx="62" cy="42" rx="8" ry="7" fill="' + SHADE + '" ' + st() + '/>' +
+        '<ellipse cx="42" cy="44" rx="8" ry="6" fill="' + SHADE + '" ' + st() + '/>' +
+        '<ellipse cx="82" cy="48" rx="3" ry="2.5" fill="' + SHADE + '" ' + st(1.6) + '/>');
+    }
+
+    function bones() {
+      const bone = rot => '<g transform="rotate(' + rot + ' 50 50)">' +
+        '<rect x="20" y="45" width="60" height="10" rx="4" fill="' + FILL + '" ' + st() + '/>' +
+        ['18,44', '18,56', '82,44', '82,56'].map(c => { const [x, y] = c.split(','); return '<circle cx="' + x + '" cy="' + y + '" r="7" fill="' + FILL + '" ' + st() + '/>'; }).join('') +
+        '<rect x="21" y="46.5" width="58" height="7" fill="' + FILL + '"/></g>';
+      return svg(bone(35) + bone(-35));
+    }
+
+    function footprint() {
+      return svg('<ellipse cx="50" cy="72" rx="13" ry="11" fill="' + SHADE + '" ' + st() + '/>' +
+        '<ellipse cx="50" cy="38" rx="6.5" ry="20" fill="' + SHADE + '" ' + st() + '/>' +
+        '<ellipse cx="32" cy="48" rx="6" ry="17" transform="rotate(-32 32 48)" fill="' + SHADE + '" ' + st() + '/>' +
+        '<ellipse cx="68" cy="48" rx="6" ry="17" transform="rotate(32 68 48)" fill="' + SHADE + '" ' + st() + '/>' +
+        '<path d="M50 16 L50 10 M24 34 L20 29 M76 34 L80 29" fill="none" ' + st() + '/>');
+    }
+
+    function shell() {
+      let ribs = '';
+      for (let k = 0; k <= 8; k++) {
+        const a = Math.PI * (1.12 + k * 0.095);
+        ribs += '<line x1="50" y1="84" x2="' + (50 + 40 * Math.cos(a)).toFixed(1) + '" y2="' + (62 + 40 * Math.sin(a)).toFixed(1) + '"/>';
+      }
+      return svg('<path d="M50 84 L14 50 Q50 2 86 50 Z" fill="' + FILL + '" ' + st() + '/>' +
+        '<g ' + st(1.5) + '>' + ribs + '</g>' +
+        '<path d="M42 84 L58 84 L54 90 L46 90 Z" fill="' + SHADE + '" ' + st(1.6) + '/>');
+    }
+
+    const KINDS = [ammonite, trilobite, fishFossil, skull, bones, footprint, shell];
+    let bag = [];
+    return {
+      next() {
+        if (!bag.length) bag = KINDS.slice().sort(() => Math.random() - 0.5);
+        return bag.pop()();
+      }
+    };
+  })();
+
   /* ================= aquarium scene ================= */
   function buildAquarium() {
     const rnd = (a, b) => a + Math.random() * (b - a);
@@ -616,6 +777,17 @@
       '</div></div><div class="name">' + esc(name) + '</div></div>' +
       (tally === null ? '' : '<div class="tally">' + esc(tally) + '</div>');
     const t = { el, timer: 0, ar: 1 };
+    if (D.fo && tally !== null) {
+      const art = document.createElement('div');
+      art.className = 'fossil-art';
+      art.innerHTML = Fossils.next();
+      el.querySelector('.photo').appendChild(art);
+      el.style.setProperty('--d', (i * 0.15).toFixed(2) + 's');   // ripple across the board
+      // Your own fossil picture, if fossils/<animal>.jpg exists
+      C.findImage(name, 'fossils').then(url => {
+        if (url) art.innerHTML = '<img alt="" src="' + esc(url) + '">';
+      });
+    }
     C.findImage(name).then(url => {
       url = url || onlineUrl;
       if (!url) return;
@@ -640,10 +812,10 @@
     return t;
   }
 
-  function puff(r) {
+  function puff(r, kind) {
     for (let k = 0; k < 9; k++) {
       const p = document.createElement('div');
-      p.className = 'puff';
+      p.className = 'puff' + (kind ? ' ' + kind : '');
       const sz = r.w * (0.25 + Math.random() * 0.25);
       p.style.width = p.style.height = sz + 'px';
       p.style.left = (r.x + r.w / 2) + 'px';
@@ -666,7 +838,10 @@
     if (s.head === 'drum') html = '<div class="label">And the answer is\u2026</div>';
     if (s.head === 'vanish') html = '<div class="label">' + (D.f.length > 2 ? 'None of these!' : 'Neither one!') + '</div>';
     if (s.head === 'aqua') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a) +
-      '!</span><span class="sub">Every water animal wins!</span></div>';
+      '!</span><span class="sub">Every water animal is correct!</span></div>';
+    if (s.head === 'what') html = '<div class="label">What happened to all the animals?!</div>';
+    if (s.head === 'fossilAns') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a) +
+      '!</span><span class="sub">Any animal that can make a fossil is correct!</span></div>';
     if (s.head === 'aquaNone') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a) + '!</span></div>';
     if (s.head === 'answer') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a) + '!</span></div>';
     const changed = !prev || prev.head !== s.head;
@@ -708,6 +883,14 @@
       el.style.opacity = s.faded.has(i) ? FADE : 1;
       el.classList.toggle('winner', s.winner === i || !!(s.winners && s.winners.has(i)));
       el.classList.toggle('no-tally', !s.tallies);
+      el.classList.toggle('fossil', !!s.fossil);
+      el.classList.remove('fossilizing');
+      if (animate && s.fossil && !(p && p.fossil) && s.vis.has(i)) {
+        void el.offsetWidth;
+        el.classList.add('fossilizing');
+        const delay = parseFloat(el.style.getPropertyValue('--d')) || 0;
+        setTimeout(() => puff(r, 'dust'), delay * 1000 + 250);
+      }
 
       const show = s.vis.has(i);
       const was = p ? p.vis.has(i) : show;
@@ -746,10 +929,12 @@
       const t = frames[k].t;
       const sounds = { intro: 'appear', banner: 'elimination', elim: 'eliminate', final: 'finalvote',
                        spot: 'spotlight', drum: 'drumroll', revealIn: 'reveal', revealOut: 'reveal', vanish: 'wrong',
-                       aquaIn: 'aquarium', aquaOut: 'aquarium' };
+                       aquaIn: 'aquarium', aquaOut: 'aquarium',
+                       fossilize: 'fossilize', what: 'huh', fossilAns: 'reveal' };
       if (sounds[t]) Sound.play(sounds[t]);
       if (t === 'revealIn' || t === 'revealOut') setTimeout(Confetti.burst, t === 'revealOut' ? 350 : 150);
       if (t === 'aquaIn' || t === 'aquaOut') setTimeout(burstBubbles, 900);
+      if (t === 'fossilAns') setTimeout(Confetti.burst, 150);
     }
 
     if (!animate) {

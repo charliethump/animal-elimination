@@ -59,19 +59,21 @@
     return hit ? (hit[1] || hit[0]) : name;
   }
 
-  // Looks for animals/<slug>.jpg, then .png, .webp, .jpeg
+  // Looks for animals/<slug>.jpg (or another folder), then .png, .webp, .jpeg
   const EXTS = ['jpg', 'png', 'webp', 'jpeg'];
   const imageCache = {};
-  function findImage(name) {
+  function findImage(name, folder) {
+    folder = folder || 'animals';
     const slug = slugify(name);
     if (!slug) return Promise.resolve(null);
-    if (imageCache[slug]) return imageCache[slug];
-    imageCache[slug] = new Promise(resolve => {
+    const key = folder + '/' + slug;
+    if (imageCache[key]) return imageCache[key];
+    imageCache[key] = new Promise(resolve => {
       setTimeout(() => resolve(null), 4000);   // never let a stalled request hold things up
       let i = 0;
       const tryNext = () => {
         if (i >= EXTS.length) return resolve(null);
-        const url = 'animals/' + slug + '.' + EXTS[i++];
+        const url = folder + '/' + slug + '.' + EXTS[i++];
         const img = new Image();
         img.onload = () => resolve(url);
         img.onerror = tryNext;
@@ -79,7 +81,7 @@
       };
       tryNext();
     });
-    return imageCache[slug];
+    return imageCache[key];
   }
 
   // Class data rides in the link after the #, compressed and scrambled so
