@@ -7,9 +7,9 @@
 window.CARNIVAL_CONFIG = {
   mysteries: [
     { label: 'Mystery Animal 1', answer: 'Lion' },
-    { label: 'Mystery Animal 2', answer: 'Elephant' },
-    { label: 'Mystery Animal 3', answer: 'Kangaroo' },
-    { label: 'Mystery Animal 4', answer: 'Tortoise' },
+    { label: 'Mystery Animal 2', answer: 'Tortoise' },
+    { label: 'Mystery Animal 3', answer: 'Aquarium' },
+    { label: 'Mystery Animal 4', answer: 'Fossils' },
     { label: 'Mystery Animal 5', answer: 'Swan' }
   ],
 
