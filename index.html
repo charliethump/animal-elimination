@@ -422,6 +422,7 @@
     if (rows.length < 3) out.push(['block', 'Add at least three animals.']);
     if (aquarium()) {
       if (rows.length >= 3 && !fins.length) out.push(['warn', 'No water animals yet. Two finalists will be picked at random, then the aquarium appears on its own.']);
+      if (rows.length >= 3 && fins.length === 1) out.push(['warn', 'Only one water animal. One more finalist will be picked at random for the final vote, and it disappears at the reveal.']);
     } else {
       if (rows.length >= 3 && fins.length < 2) out.push(['warn', (fins.length ? 'One more finalist' : 'Two finalists') + ' will be picked at random when you press Start.']);
       if (fins.length > 3) out.push(['block', 'Mark no more than three finalists.']);
@@ -451,8 +452,7 @@
     // Fewer than two finalists marked: fill the rest at random
     const finIds = new Set(rows.filter(isFin).map(r => r.id));
     const pool = shuffle(rows.filter(r => !finIds.has(r.id)).map(r => r.id));
-    const need = aquarium() ? (finIds.size ? 0 : 2) : 2;   // aquarium: random pair only if no water animals
-    while (finIds.size < need && pool.length) finIds.add(pool.pop());
+    while (finIds.size < 2 && pool.length) finIds.add(pool.pop());   // always at least two in the final vote
     let order;
     if (S.custom) { repairElim(); order = S.elim.slice(); }
     else order = shuffle(nonFinalistIds());
@@ -516,7 +516,7 @@
 
     const fins = filled().filter(isFin);
     const randomCount = aquarium()
-      ? (fins.length ? 0 : Math.min(2, filled().length))
+      ? Math.max(0, Math.min(2, filled().length) - fins.length)
       : Math.max(0, Math.min(2, filled().length - 1) - fins.length);
     $('#finList').innerHTML =
       fins.map(r => '<li>' + esc(r.name.trim()) + (isAnswer(r) ? (aquarium() ? ' (water animal)' : ' (correct answer)') : '') + '</li>').join('') +
