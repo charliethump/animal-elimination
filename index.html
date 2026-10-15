@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Animal Elimination setup</title>
+<title>Animal Elimination</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎪%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Rye&display=swap" rel="stylesheet">
@@ -13,148 +14,195 @@
     --page: #EEF1F8; --line: #CDD3E4; --ink: #1B2140; --soft: #59607A;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body { margin: 0; background: var(--page); color: var(--ink);
          font-family: Andika, "Trebuchet MS", sans-serif; font-size: 16px; line-height: 1.45; }
-  .top { background: var(--navy); color: #fff; padding: 28px 24px 22px;
-         border-bottom: 6px solid var(--gold); }
-  .top h1 { font-family: Rye, Rockwell, Georgia, serif; font-weight: 400; color: var(--gold);
-            font-size: 40px; margin: 0; letter-spacing: 1px; }
-  .top p { margin: 6px 0 0; color: #D9DDEB; max-width: 60ch; }
-  .top a { color: var(--gold); }
-  main { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; }
-  .card { background: #fff; border: 1px solid var(--line); border-radius: 10px;
-          padding: 18px 20px; margin-bottom: 16px; }
-  h2 { font-family: Rye, Rockwell, Georgia, serif; font-weight: 400; font-size: 22px;
-       margin: 0 0 8px; color: var(--red); }
-  .hint { color: var(--soft); margin: 0 0 12px; font-size: 14px; }
-  label { font-size: 14px; color: var(--soft); }
   input, select, textarea { font: inherit; color: var(--ink); border: 1px solid var(--line);
          border-radius: 6px; padding: 7px 9px; background: #fff; }
-  input:focus, select:focus, textarea:focus, button:focus-visible, a:focus-visible {
-         outline: 3px solid var(--gold); outline-offset: 1px; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .grid2 label { display: flex; flex-direction: column; gap: 4px; }
-  .answer { margin: 12px 0 0; font-size: 15px; }
-  .answer b { color: var(--teal); }
+  input:focus, select:focus, button:focus-visible, a:focus-visible { outline: 3px solid var(--gold); outline-offset: 1px; }
   button, .btn { font: inherit; font-size: 15px; cursor: pointer; border-radius: 6px;
          border: 1px solid var(--line); background: #fff; color: var(--ink); padding: 7px 14px;
          text-decoration: none; display: inline-block; }
   button:hover, .btn:hover { border-color: var(--navy); }
+  button:disabled { opacity: .45; cursor: default; }
   button.primary { background: var(--red); border-color: var(--red); color: #fff; font-weight: 700; }
-  button.primary:disabled { background: #B9BDCB; border-color: #B9BDCB; cursor: default; }
-  button.quiet { border: 0; background: none; color: var(--soft); text-decoration: underline; padding: 6px 0; }
-  .btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 
-  .row { display: grid; grid-template-columns: 24px 52px 1fr 92px 96px auto; gap: 10px;
-         align-items: center; padding: 8px 0; border-top: 1px solid #E4E7F0; }
+  /* ---------- top bar ---------- */
+  .top { background: var(--navy); border-bottom: 6px solid var(--gold); padding: 14px 24px;
+         display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .top .brand { font-family: Rye, Rockwell, Georgia, serif; color: var(--gold); font-size: 26px; }
+  #setupBtn { background: transparent; color: #AEB5D0; border-color: #3A4270; font-size: 14px; padding: 5px 12px; }
+  #setupBtn:hover { color: #fff; border-color: #AEB5D0; }
+
+  /* ---------- class view ---------- */
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 60px; }
+  .cv-head { text-align: center; margin-bottom: 18px; }
+  .cv-head h1 { font-family: Rye, Rockwell, Georgia, serif; font-weight: 400; color: var(--red);
+                font-size: 44px; margin: 0; line-height: 1.1; }
+  .cv-head p { margin: 4px 0 0; font-size: 22px; color: var(--soft); }
+  #prompt { text-align: center; font-size: 22px; color: var(--soft); padding: 60px 0; }
+
+  .sheet { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 22px 18px; }
+  .row { display: grid; grid-template-columns: 34px 64px 1fr 120px 40px; gap: 14px;
+         align-items: center; padding: 10px 0; border-top: 1px solid #E4E7F0; }
   .row:first-child { border-top: 0; }
-  .row .n { color: var(--soft); text-align: right; font-size: 14px; }
-  .thumb { width: 52px; height: 52px; border-radius: 6px; background: #E4E7F0; overflow: hidden;
-           display: grid; place-items: center; color: var(--soft); font-size: 20px; }
+  .row .n { color: var(--soft); text-align: right; font-size: 18px; white-space: nowrap; }
+  .dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #D5DAE6;
+         margin-left: 3px; vertical-align: middle; visibility: hidden; }
+  .dot.on { visibility: visible; }
+  .thumb { width: 64px; height: 64px; border-radius: 8px; background: #E4E7F0; overflow: hidden;
+           display: grid; place-items: center; color: var(--soft);
+           font-family: Rye, Rockwell, Georgia, serif; font-size: 28px; }
   .thumb img { width: 100%; height: 100%; object-fit: cover; }
-  .namecell input { width: 100%; }
-  .status { font-size: 13px; color: var(--soft); min-height: 1.2em; margin-top: 2px; }
-  .status.missing { color: #A15C00; }
-  .status.answer { color: var(--teal); font-weight: 700; }
-  .tally { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
-  .tally input { width: 100%; }
-  .fin { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink); cursor: pointer; }
-  .fin input { width: 18px; height: 18px; accent-color: var(--red); }
-  .fin input:disabled + span { color: var(--teal); }
-  .moves { display: flex; gap: 4px; }
-  .moves button { padding: 4px 8px; font-size: 13px; }
+  .row input { font-size: 22px; padding: 8px 12px; width: 100%; }
+  .row .votes { text-align: center; }
+  .row .del { padding: 4px 0; width: 40px; color: var(--soft); }
+  .cv-buttons { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; gap: 12px; }
+  #addRow { font-size: 18px; padding: 10px 18px; }
+  #start { font-family: Rye, Rockwell, Georgia, serif; font-weight: 400; font-size: 26px; padding: 10px 34px;
+           background: var(--red); border-color: var(--red); color: var(--gold); }
+  #start.shake { animation: shake .45s; }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-8px); } 40%,80% { transform: translateX(8px); } }
 
-  #missing { background: #FFF6DE; border: 1px solid #F2D58A; border-radius: 8px; padding: 10px 12px;
-             margin-bottom: 12px; font-size: 14px; }
-  #missing code { background: #fff; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
-  #missing ul { margin: 6px 0 8px; padding-left: 20px; }
-
-  #elim { margin: 0; padding: 0; list-style: none; counter-reset: e; }
-  #elim li { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-top: 1px solid #E4E7F0;
-             counter-increment: e; }
-  #elim li:first-child { border-top: 0; }
-  #elim li::before { content: counter(e); color: var(--soft); width: 22px; text-align: right; font-size: 14px; }
-  #elim li span { flex: 1; }
-  #elim li button { padding: 3px 8px; font-size: 13px; }
-  .empty { color: var(--soft); font-style: italic; }
-
-  #problems { margin: 0 0 12px; padding-left: 20px; font-size: 14px; }
+  /* ---------- Setup panel ---------- */
+  #veil { position: fixed; inset: 0; background: rgba(27,33,64,.45); z-index: 40; }
+  #panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100vw); background: var(--page);
+           z-index: 41; overflow-y: auto; box-shadow: -10px 0 30px rgba(0,0,0,.25); }
+  .p-head { background: var(--navy); color: var(--gold); padding: 14px 20px; display: flex;
+            justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1; }
+  .p-head h2 { font-family: Rye, Rockwell, Georgia, serif; font-weight: 400; margin: 0; font-size: 22px; color: var(--gold); }
+  .p-head button { background: transparent; color: #fff; border-color: #3A4270; }
+  .p-body { padding: 14px 16px 40px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+  .card h3 { font-family: Rye, Rockwell, Georgia, serif; font-weight: 400; font-size: 18px; margin: 0 0 6px; color: var(--red); }
+  .hint { color: var(--soft); margin: 0 0 10px; font-size: 13px; }
+  .field { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--soft); margin-bottom: 8px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .answer { font-size: 18px; }
+  .answer b { color: var(--teal); }
+  ul.plain { margin: 4px 0 0; padding-left: 20px; font-size: 14px; }
   #problems li.block { color: var(--red); }
   #problems li.warn { color: #A15C00; }
-  #out input { width: 100%; margin-top: 12px; font-size: 13px; }
-  .copied { color: var(--teal); font-size: 14px; align-self: center; }
-  .inline { display: flex; gap: 8px; }
-  .inline input { flex: 1; }
+  #problems li.ok { color: var(--teal); list-style: none; margin-left: -20px; }
+  #elim { margin: 6px 0 0; padding: 0; list-style: none; counter-reset: e; }
+  #elim li { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-top: 1px solid #E4E7F0; counter-increment: e; font-size: 14px; }
+  #elim li:first-child { border-top: 0; }
+  #elim li::before { content: counter(e); color: var(--soft); width: 20px; text-align: right; }
+  #elim li span { flex: 1; }
+  #elim li button { padding: 2px 8px; font-size: 12px; }
+  code { background: #F3F5FB; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  .out { width: 100%; font-size: 12px; margin-top: 8px; }
+  .msg { font-size: 13px; color: var(--teal); min-height: 1.2em; margin: 6px 0 0; }
+  button.quiet { border: 0; background: none; color: var(--red); text-decoration: underline; padding: 6px 0; }
 
   @media (max-width: 680px) {
-    .grid2 { grid-template-columns: 1fr; }
-    .row { grid-template-columns: 22px 44px 1fr 80px; }
-    .row .fin { grid-column: 3; }
-    .row .moves { grid-column: 4; }
-    .thumb { width: 44px; height: 44px; }
+    .row { grid-template-columns: 26px 48px 1fr 70px 34px; gap: 8px; }
+    .thumb { width: 48px; height: 48px; }
+    .row input { font-size: 17px; }
+    .pair { grid-template-columns: 1fr; }
   }
 </style>
 </head>
 <body>
 <header class="top">
-  <h1>Animal Elimination</h1>
-  <p>Set up one class and one mystery animal, then copy the link into your slides.
-     Need photos? Open the <a href="library.html">photo finder</a>.</p>
+  <div class="brand">Animal Elimination</div>
+  <button id="setupBtn">Setup</button>
 </header>
 
 <main>
-  <section class="card">
-    <h2>Class</h2>
-    <div class="grid2">
-      <label>Class name <input id="cls" placeholder="Larson 2A" autocomplete="off"></label>
-      <label>Mystery animal <select id="mystery"></select></label>
-    </div>
-    <p class="answer" id="answerLine"></p>
-  </section>
+  <div class="cv-head" id="cvHead" hidden>
+    <h1 id="cvClass"></h1>
+    <p id="cvMystery"></p>
+  </div>
+  <div id="prompt" hidden>Click Setup to choose a class and mystery animal.</div>
 
-  <section class="card">
-    <h2>Student guesses</h2>
-    <p class="hint">Top to bottom is the order the animals walk onto the board. Check two or three finalists for the final vote. If the class guessed the right animal, it's always a finalist.</p>
-    <div id="missing" hidden></div>
-    <div id="rows"></div>
-    <div class="btnrow">
+  <div id="entry" hidden>
+    <div class="sheet" id="rows"></div>
+    <div class="cv-buttons">
       <button id="addRow">Add animal</button>
-      <button id="shuffleIntro">Shuffle board order</button>
+      <button id="start">Start!</button>
     </div>
-  </section>
-
-  <section class="card">
-    <h2>Elimination order</h2>
-    <p class="hint">First out at the top. It starts shuffled; use the arrows to set it yourself. Finalists aren't listed because they stay for the final vote.</p>
-    <ol id="elim"></ol>
-    <div class="btnrow"><button id="shuffleElim">Shuffle elimination order</button></div>
-  </section>
-
-  <section class="card">
-    <h2>Class link</h2>
-    <ul id="problems"></ul>
-    <button class="primary" id="make">Create link</button>
-    <div id="out" hidden>
-      <input id="link" readonly aria-label="Class link">
-      <div class="btnrow">
-        <button id="copy">Copy link</button>
-        <a class="btn" id="open" target="_blank" rel="noopener">Open student view</a>
-        <span class="copied" id="copied" hidden>Copied</span>
-      </div>
-    </div>
-  </section>
-
-  <section class="card">
-    <h2>Edit a class</h2>
-    <p class="hint">Paste a class link to load it back in here, change it, and create a new link.</p>
-    <div class="inline">
-      <input id="paste" placeholder="Paste a class link" aria-label="Class link to edit">
-      <button id="load">Load</button>
-    </div>
-    <p class="hint" id="loadMsg" style="margin-top:8px"></p>
-    <button class="quiet" id="reset">Start over with a blank class</button>
-  </section>
+  </div>
 </main>
+
+<div id="veil" hidden></div>
+<aside id="panel" hidden aria-label="Setup">
+  <div class="p-head"><h2>Setup</h2><button id="closePanel">Close</button></div>
+  <div class="p-body">
+
+    <section class="card">
+      <h3>This class</h3>
+      <div class="pair">
+        <label class="field">Class name <input id="pCls" autocomplete="off" placeholder="Sullivan"></label>
+        <label class="field">Mystery animal <select id="pMystery"></select></label>
+      </div>
+      <p class="answer" id="pAnswer"></p>
+    </section>
+
+    <section class="card">
+      <h3>Ready to start?</h3>
+      <ul class="plain" id="problems"></ul>
+    </section>
+
+    <section class="card">
+      <h3>Finalists</h3>
+      <p class="hint">Alt-click a row on the class page to mark or unmark it. The correct answer is always a finalist if the class guessed it.</p>
+      <ul class="plain" id="finList"></ul>
+    </section>
+
+    <section class="card">
+      <h3>Elimination order</h3>
+      <p class="hint" id="elimMode"></p>
+      <ol id="elim"></ol>
+      <div class="btnrow" id="elimBtns"></div>
+    </section>
+
+    <section class="card" id="missingCard" hidden>
+      <h3>Missing photos</h3>
+      <p class="hint">These show as a plain letter card until you upload a photo into the animals folder.</p>
+      <ul class="plain" id="missingList"></ul>
+      <div class="btnrow"><a class="btn" id="findMissing" target="_blank" rel="noopener">Find photos for these</a></div>
+    </section>
+
+    <section class="card">
+      <h3>Game link</h3>
+      <p class="hint">A link straight to this game, without the setup page. Useful for replaying it later.</p>
+      <button id="makeGame">Create game link</button>
+      <input class="out" id="gameOut" readonly hidden aria-label="Game link">
+      <p class="msg" id="gameMsg"></p>
+    </section>
+
+    <section class="card">
+      <h3>Slide links</h3>
+      <p class="hint">Makes a link for your slides that opens this page set to one class and mystery animal.</p>
+      <div class="pair">
+        <label class="field">Class name <input id="sCls" autocomplete="off" placeholder="Sullivan"></label>
+        <label class="field">Mystery animal <select id="sMystery"></select></label>
+      </div>
+      <button id="makeSlide">Copy slide link</button>
+      <input class="out" id="slideOut" readonly hidden aria-label="Slide link">
+      <p class="msg" id="slideMsg"></p>
+    </section>
+
+    <section class="card">
+      <h3>Edit a game link</h3>
+      <div class="btnrow" style="margin-top:0">
+        <input id="paste" style="flex:1" placeholder="Paste a game link" aria-label="Game link to edit">
+        <button id="load">Load</button>
+      </div>
+      <p class="msg" id="loadMsg"></p>
+    </section>
+
+    <section class="card">
+      <h3>Clear this class</h3>
+      <p class="hint">Erases the guesses saved for this class and mystery animal.</p>
+      <button class="quiet" id="reset">Clear guesses</button>
+    </section>
+
+    <p class="hint"><a href="library.html" target="_blank" rel="noopener">Open the photo finder</a></p>
+  </div>
+</aside>
 
 <datalist id="lib"></datalist>
 
@@ -166,21 +214,55 @@
   const CFG = window.CARNIVAL_CONFIG || { mysteries: [] };
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const DRAFT_KEY = 'animal-elimination-draft';
+
+  /* ---------- which class + mystery (from the address) ---------- */
+  const params = new URLSearchParams(location.search);
+  let CLS = (params.get('c') || '').trim();
+  let M = parseInt(params.get('m'), 10) - 1;
+  if (!(M >= 0 && CFG.mysteries[M])) M = -1;
+  const ready = () => !!CLS && M >= 0;
 
   let nextId = 1;
-  let S = blankState();
+  let S = null;
 
-  function blankRow() { return { id: nextId++, name: '', tally: '', fin: false }; }
-  function blankState() {
-    return { cls: '', m: 0, rows: [blankRow(), blankRow(), blankRow(), blankRow()], elim: [] };
+  function blankRow() { return { id: nextId++, name: '', tally: '' , fin: false }; }
+  function blankState() { return { rows: [blankRow(), blankRow(), blankRow()], elim: [], custom: false }; }
+
+  function draftKey() { return 'animal-elimination:' + C.slugify(CLS) + ':' + (M + 1); }
+  function loadDraft() {
+    S = null;
+    if (ready()) {
+      try {
+        const s = JSON.parse(localStorage.getItem(draftKey()));
+        if (s && Array.isArray(s.rows) && s.rows.length) S = s;
+      } catch (e) {}
+    }
+    if (!S) { nextId = 1; S = blankState(); }
+    else nextId = Math.max(0, ...S.rows.map(r => r.id)) + 1;
+  }
+  function save() {
+    if (!ready()) return;
+    try { localStorage.setItem(draftKey(), JSON.stringify(S)); } catch (e) {}
   }
 
-  function answerName() { const m = CFG.mysteries[S.m]; return m ? m.answer : ''; }
-  function answerLabel() { const m = CFG.mysteries[S.m]; return m ? m.label : 'Mystery Animal'; }
-  function isAnswer(r) { return r.name.trim() && C.slugify(r.name) === C.slugify(answerName()); }
-  function isFin(r) { return r.fin || isAnswer(r); }
-  function filled() { return S.rows.filter(r => r.name.trim()); }
+  function setClass(c, m) {
+    CLS = c.trim();
+    M = m;
+    const u = new URL(location.href);
+    u.search = '';
+    if (CLS) u.searchParams.set('c', CLS);
+    if (M >= 0) u.searchParams.set('m', M + 1);
+    history.replaceState(null, '', u);
+    loadDraft();
+    renderAll();
+  }
+
+  /* ---------- helpers ---------- */
+  const answerName = () => (CFG.mysteries[M] || {}).answer || '';
+  const answerLabel = () => (CFG.mysteries[M] || {}).label || 'Mystery Animal';
+  const isAnswer = r => !!r.name.trim() && C.slugify(r.name) === C.slugify(answerName());
+  const isFin = r => !!r.name.trim() && (r.fin || isAnswer(r));
+  const filled = () => S.rows.filter(r => r.name.trim());
 
   function shuffle(a) {
     for (let i = a.length - 1; i > 0; i--) {
@@ -190,29 +272,42 @@
     return a;
   }
 
-  // Keeps the elimination order in step with the rows without wiping
-  // an order you set: gone rows drop out, new rows land at a random spot.
+  function nonFinalistIds() { return filled().filter(r => !isFin(r)).map(r => r.id); }
+
+  // Keeps a custom order in step with the rows: gone rows drop out, new ones land at a random spot.
   function repairElim() {
-    const want = filled().filter(r => !isFin(r)).map(r => r.id);
+    const want = nonFinalistIds();
     S.elim = S.elim.filter(id => want.includes(id));
     want.forEach(id => {
       if (!S.elim.includes(id)) S.elim.splice(Math.floor(Math.random() * (S.elim.length + 1)), 0, id);
     });
   }
 
-  function save() {
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(S)); } catch (e) {}
-    $('#out').hidden = true;
+  /* ---------- class view ---------- */
+  function renderClassView() {
+    $('#cvHead').hidden = !ready();
+    $('#entry').hidden = !ready();
+    $('#prompt').hidden = ready();
+    if (!ready()) return;
+    $('#cvClass').textContent = CLS;
+    $('#cvMystery').textContent = answerLabel();
+    renderRows();
   }
 
-  /* ---------- rendering ---------- */
+  let lastToggle = 0;
+  function toggleFin(r, d) {
+    const now = Date.now();
+    if (now - lastToggle < 350) return;   // Chromebooks can fire both click and right-click for Alt-click
+    lastToggle = now;
+    if (!r.name.trim() || isAnswer(r)) return;
+    r.fin = !r.fin;
+    save();
+    updateDot(d, r);
+    renderPanel();
+  }
 
-  function renderClass() {
-    $('#cls').value = S.cls;
-    $('#mystery').innerHTML = CFG.mysteries.map((m, i) =>
-      '<option value="' + i + '"' + (i === S.m ? ' selected' : '') + '>' + esc(m.label) + '</option>').join('');
-    $('#answerLine').innerHTML = 'Correct answer: <b>' + esc(answerName()) +
-      '</b> <span class="hint">(set in config.js)</span>';
+  function updateDot(d, r) {
+    d.querySelector('.dot').classList.toggle('on', !!r.name.trim() && r.fin && !isAnswer(r));
   }
 
   function renderRows() {
@@ -221,70 +316,196 @@
     S.rows.forEach((r, i) => {
       const d = document.createElement('div');
       d.className = 'row';
-      const ans = isAnswer(r);
       d.innerHTML =
-        '<span class="n">' + (i + 1) + '</span>' +
+        '<span class="n">' + (i + 1) + '<span class="dot"></span></span>' +
         '<div class="thumb" aria-hidden="true"></div>' +
-        '<div class="namecell"><input class="name" list="lib" placeholder="Animal name" aria-label="Animal ' + (i + 1) + ' name" value="' + esc(r.name) + '"><div class="status"></div></div>' +
-        '<label class="tally">Votes<input class="votes" type="number" min="0" step="1" inputmode="numeric" value="' + esc(r.tally) + '"></label>' +
-        '<label class="fin"><input class="finbox" type="checkbox"' + (isFin(r) ? ' checked' : '') + (ans ? ' disabled' : '') + '><span>Finalist</span></label>' +
-        '<div class="moves">' +
-          '<button data-a="up" aria-label="Move up"' + (i === 0 ? ' disabled' : '') + '>&#9650;</button>' +
-          '<button data-a="down" aria-label="Move down"' + (i === S.rows.length - 1 ? ' disabled' : '') + '>&#9660;</button>' +
-          '<button data-a="del" aria-label="Remove">&#10005;</button>' +
-        '</div>';
+        '<input class="name" list="lib" placeholder="Animal" aria-label="Animal ' + (i + 1) + '" value="' + esc(r.name) + '" autocomplete="off">' +
+        '<input class="votes" type="number" min="0" step="1" inputmode="numeric" placeholder="Votes" aria-label="Votes for animal ' + (i + 1) + '" value="' + esc(r.tally) + '">' +
+        '<button class="del" aria-label="Remove animal ' + (i + 1) + '">&#10005;</button>';
+
+      d.addEventListener('click', e => {
+        if (!e.altKey) return;
+        e.preventDefault(); e.stopPropagation();
+        toggleFin(r, d);
+      }, true);
+      d.addEventListener('contextmenu', e => {
+        if (!e.altKey) return;
+        e.preventDefault();
+        toggleFin(r, d);
+      });
 
       const nameIn = d.querySelector('.name');
+      const votesIn = d.querySelector('.votes');
       nameIn.addEventListener('input', () => {
         r.name = nameIn.value;
-        updateStatus(d, r);
-        afterChange(false);
+        updateThumb(d, r);
+        updateDot(d, r);
+        changed();
       });
-      nameIn.addEventListener('change', () => afterChange(true));
-      d.querySelector('.votes').addEventListener('input', e => { r.tally = e.target.value; afterChange(false); });
-      d.querySelector('.finbox').addEventListener('change', e => { r.fin = e.target.checked; afterChange(true); });
-      d.querySelectorAll('[data-a]').forEach(b => b.addEventListener('click', () => {
-        const a = b.dataset.a;
-        if (a === 'del') S.rows.splice(i, 1);
-        if (a === 'up' && i > 0) [S.rows[i - 1], S.rows[i]] = [S.rows[i], S.rows[i - 1]];
-        if (a === 'down' && i < S.rows.length - 1) [S.rows[i + 1], S.rows[i]] = [S.rows[i], S.rows[i + 1]];
+      nameIn.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); votesIn.focus(); votesIn.select(); }
+      });
+      votesIn.addEventListener('input', () => { r.tally = votesIn.value; changed(); });
+      votesIn.addEventListener('keydown', e => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        if (i === S.rows.length - 1) addRow();
+        else document.querySelectorAll('#rows .name')[i + 1].focus();
+      });
+      d.querySelector('.del').onclick = () => {
+        S.rows.splice(i, 1);
         if (!S.rows.length) S.rows.push(blankRow());
-        afterChange(true);
-      }));
+        changed();
+        renderRows();
+      };
 
       box.appendChild(d);
-      updateStatus(d, r);
+      updateThumb(d, r);
+      updateDot(d, r);
     });
   }
 
-  function updateStatus(d, r) {
-    const st = d.querySelector('.status');
+  function updateThumb(d, r) {
     const th = d.querySelector('.thumb');
     const name = r.name.trim();
-    if (!name) { st.textContent = ''; st.className = 'status'; th.innerHTML = ''; return; }
-    const asked = name;
+    if (!name) { th.innerHTML = ''; return; }
+    th.textContent = name.charAt(0).toUpperCase();
     C.findImage(name).then(url => {
-      if (r.name.trim() !== asked) return;
-      if (url) th.innerHTML = '<img alt="" src="' + esc(url) + '">';
-      else th.textContent = '?';
-      if (isAnswer(r)) { st.textContent = 'Correct answer, always a finalist'; st.className = 'status answer'; }
-      else if (!url) { st.textContent = 'Missing photo: animals/' + C.slugify(name) + '.jpg'; st.className = 'status missing'; }
-      else { st.textContent = ''; st.className = 'status'; }
+      if (r.name.trim() !== name || !url) return;
+      th.innerHTML = '<img alt="" src="' + esc(url) + '">';
     });
+  }
+
+  function addRow() {
+    S.rows.push(blankRow());
+    changed();
+    renderRows();
+    const inputs = document.querySelectorAll('#rows .name');
+    inputs[inputs.length - 1].focus();
+  }
+
+  function changed() {
+    save();
+    renderPanel();
+  }
+
+  /* ---------- checks ---------- */
+  function problems() {
+    const out = [];
+    if (!ready()) { out.push(['block', 'Choose a class name and mystery animal above.']); return out; }
+    const rows = filled();
+    const fins = rows.filter(isFin);
+    if (rows.length < 3) out.push(['block', 'Add at least three animals.']);
+    if (fins.length < 2) out.push(['block', 'Alt-click at least two finalists.']);
+    if (fins.length > 3) out.push(['block', 'Mark no more than three finalists.']);
+    if (rows.length >= 3 && rows.length === fins.length) out.push(['block', 'Every animal is a finalist, so nothing gets eliminated.']);
+    const seen = {};
+    rows.forEach(r => {
+      const s = C.slugify(r.name);
+      if (seen[s]) out.push(['block', r.name.trim() + ' is listed twice.']);
+      seen[s] = true;
+      const t = String(r.tally).trim();
+      if (t !== '' && !/^\d+$/.test(t)) out.push(['block', 'Votes for ' + r.name.trim() + ' should be a whole number.']);
+    });
+    return out;
+  }
+  const canStart = () => !problems().some(p => p[0] === 'block');
+
+  /* ---------- link data ---------- */
+  function buildData() {
+    const rows = filled();
+    const idx = Object.fromEntries(rows.map((r, i) => [r.id, i]));
+    let order;
+    if (S.custom) { repairElim(); order = S.elim.slice(); }
+    else order = shuffle(nonFinalistIds());
+    return {
+      v: 1, c: CLS, l: answerLabel(), a: answerName(),
+      g: rows.map(r => [r.name.trim(), parseInt(r.tally, 10) || 0]),
+      f: rows.map((r, i) => isFin(r) ? i : -1).filter(i => i >= 0),
+      e: order.map(id => idx[id])
+    };
+  }
+
+  async function gameUrl() {
+    const url = new URL('play.html', location.href);
+    url.search = '';
+    url.hash = await C.encodeData(buildData());
+    return url.href;
+  }
+
+  async function copy(text, input, msgEl, msg) {
+    input.value = text;
+    input.hidden = false;
+    try { await navigator.clipboard.writeText(text); msgEl.textContent = msg; }
+    catch (e) { input.select(); document.execCommand('copy'); msgEl.textContent = msg; }
+  }
+
+  /* ---------- Setup panel ---------- */
+  function mysteryOptions(sel) {
+    return '<option value="-1">Choose one</option>' + CFG.mysteries.map((m, i) =>
+      '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>' + esc(m.label) + '</option>').join('');
+  }
+
+  let missingTimer = 0;
+  function renderPanel() {
+    if ($('#panel').hidden) return;
+
+    if (document.activeElement !== $('#pCls')) $('#pCls').value = CLS;
+    $('#pMystery').innerHTML = mysteryOptions(M);
+    $('#pAnswer').innerHTML = M >= 0 ? 'Correct answer: <b>' + esc(answerName()) + '</b>' : '';
+
+    const p = problems();
+    $('#problems').innerHTML = p.length
+      ? p.map(x => '<li class="' + x[0] + '">' + esc(x[1]) + '</li>').join('')
+      : '<li class="ok">Ready. Press Start on the class page.</li>';
+
+    if (!ready()) {
+      $('#finList').innerHTML = '';
+      $('#elim').innerHTML = '';
+      $('#elimMode').textContent = '';
+      $('#elimBtns').innerHTML = '';
+      $('#missingCard').hidden = true;
+      return;
+    }
+
+    const fins = filled().filter(isFin);
+    $('#finList').innerHTML = fins.length
+      ? fins.map(r => '<li>' + esc(r.name.trim()) + (isAnswer(r) ? ' (correct answer)' : '') + '</li>').join('')
+      : '<li>None yet.</li>';
+
+    renderElim();
+
+    clearTimeout(missingTimer);
+    missingTimer = setTimeout(async () => {
+      const names = [...new Set([answerName(), ...filled().map(r => r.name.trim())].filter(Boolean))];
+      const found = await Promise.all(names.map(n => C.findImage(n)));
+      const missing = names.filter((n, i) => !found[i]);
+      $('#missingCard').hidden = !missing.length;
+      $('#missingList').innerHTML = missing.map(n => '<li><code>' + esc(C.slugify(n)) + '.jpg</code> for ' + esc(n) + '</li>').join('');
+      $('#findMissing').href = 'library.html?add=' + encodeURIComponent(missing.join(','));
+    }, 250);
   }
 
   function renderElim() {
-    repairElim();
-    const list = $('#elim');
+    const list = $('#elim'), btns = $('#elimBtns');
     const byId = Object.fromEntries(S.rows.map(r => [r.id, r]));
-    if (!S.elim.length) {
-      list.innerHTML = '<li class="empty">Add animals that aren\u2019t finalists and they\u2019ll show up here.</li>';
+    if (!S.custom) {
+      $('#elimMode').textContent = 'Random. A fresh order is shuffled each time you press Start.';
+      list.innerHTML = '';
+      btns.innerHTML = '<button id="goCustom">Set the order myself</button>';
+      $('#goCustom').onclick = () => { S.custom = true; S.elim = shuffle(nonFinalistIds()); save(); renderElim(); };
       return;
     }
+    repairElim();
+    $('#elimMode').textContent = 'Custom. First out at the top.';
+    btns.innerHTML = '<button id="reshuffle">Shuffle</button><button id="goRandom">Back to random</button>';
+    $('#reshuffle').onclick = () => { shuffle(S.elim); save(); renderElim(); };
+    $('#goRandom').onclick = () => { S.custom = false; S.elim = []; save(); renderElim(); };
+    if (!S.elim.length) { list.innerHTML = '<li><span>Animals that aren\u2019t finalists show up here.</span></li>'; return; }
     list.innerHTML = '';
     S.elim.forEach((id, i) => {
       const li = document.createElement('li');
-      li.innerHTML = '<span>' + esc(byId[id].name) + '</span>' +
+      li.innerHTML = '<span>' + esc(byId[id].name.trim()) + '</span>' +
         '<button aria-label="Move up"' + (i === 0 ? ' disabled' : '') + '>&#9650;</button>' +
         '<button aria-label="Move down"' + (i === S.elim.length - 1 ? ' disabled' : '') + '>&#9660;</button>';
       const [up, down] = li.querySelectorAll('button');
@@ -294,153 +515,92 @@
     });
   }
 
-  let missingTimer;
-  function renderMissing() {
-    clearTimeout(missingTimer);
-    missingTimer = setTimeout(async () => {
-      const names = [...new Set([answerName(), ...filled().map(r => r.name.trim())].filter(Boolean))];
-      const found = await Promise.all(names.map(n => C.findImage(n)));
-      const missing = names.filter((n, i) => !found[i]);
-      const box = $('#missing');
-      if (!missing.length) { box.hidden = true; return; }
-      box.hidden = false;
-      box.innerHTML = '<b>' + missing.length + (missing.length === 1 ? ' animal needs a photo' : ' animals need photos') +
-        '</b> before class. Upload these into the animals folder on GitHub:' +
-        '<ul>' + missing.map(n => '<li><code>' + esc(C.slugify(n)) + '.jpg</code> for ' + esc(n) + '</li>').join('') + '</ul>' +
-        '<a class="btn" href="library.html?add=' + encodeURIComponent(missing.join(',')) + '" target="_blank" rel="noopener">Find photos for these</a>';
-      renderProblems();
-    }, 250);
+  function openPanel() {
+    $('#panel').hidden = false;
+    $('#veil').hidden = false;
+    $('#sMystery').innerHTML = mysteryOptions(M);
+    $('#sCls').value = CLS;
+    $('#gameOut').hidden = true; $('#gameMsg').textContent = '';
+    $('#slideOut').hidden = true; $('#slideMsg').textContent = '';
+    $('#loadMsg').textContent = '';
+    renderPanel();
+    $('#closePanel').focus();
   }
-
-  function problems() {
-    const out = [];
-    const rows = filled();
-    const fins = rows.filter(isFin);
-    if (rows.length < 3) out.push(['block', 'Add at least three animals.']);
-    if (fins.length < 2) out.push(['block', 'Check at least two finalists.']);
-    if (fins.length > 3) out.push(['block', 'Check no more than three finalists.']);
-    const seen = {};
-    rows.forEach(r => {
-      const s = C.slugify(r.name);
-      if (seen[s]) out.push(['block', r.name.trim() + ' is listed twice.']);
-      seen[s] = true;
-      const t = String(r.tally).trim();
-      if (t !== '' && !/^\d+$/.test(t)) out.push(['block', 'Votes for ' + r.name.trim() + ' should be a whole number.']);
-    });
-    if (rows.length && rows.length === fins.length) out.push(['block', 'Every animal is a finalist, so nothing gets eliminated.']);
-    if (!$('#missing').hidden) out.push(['warn', 'Some photos are missing. The link still works; those animals show their name on a plain card.']);
-    return out;
-  }
-
-  function renderProblems() {
-    const p = problems();
-    $('#problems').innerHTML = p.map(x => '<li class="' + x[0] + '">' + esc(x[1]) + '</li>').join('');
-    $('#problems').hidden = !p.length;
-    $('#make').disabled = p.some(x => x[0] === 'block');
-  }
-
-  function afterChange(full) {
-    save();
-    if (full) renderRows();
-    renderElim();
-    renderMissing();
-    renderProblems();
+  function closePanel() {
+    $('#panel').hidden = true;
+    $('#veil').hidden = true;
+    $('#setupBtn').focus();
   }
 
   function renderAll() {
-    renderClass();
-    renderRows();
-    renderElim();
-    renderMissing();
-    renderProblems();
-  }
-
-  /* ---------- link ---------- */
-
-  async function makeLink() {
-    const rows = filled();
-    const idx = Object.fromEntries(rows.map((r, i) => [r.id, i]));
-    const data = {
-      v: 1,
-      c: S.cls.trim(),
-      l: answerLabel(),
-      a: answerName(),
-      g: rows.map(r => [r.name.trim(), parseInt(r.tally, 10) || 0]),
-      f: rows.map((r, i) => isFin(r) ? i : -1).filter(i => i >= 0),
-      e: S.elim.map(id => idx[id])
-    };
-    const code = await C.encodeData(data);
-    const url = new URL('play.html', location.href);
-    url.hash = code;
-    $('#link').value = url.href;
-    $('#open').href = url.href;
-    $('#out').hidden = false;
-    $('#copied').hidden = true;
-  }
-
-  function loadData(d) {
-    nextId = 1;
-    const rows = d.g.map(g => ({ id: nextId++, name: g[0], tally: String(g[1]), fin: (d.f || []).includes(d.g.indexOf(g)) }));
-    const answerSlug = C.slugify(d.a);
-    let m = CFG.mysteries.findIndex(x => C.slugify(x.answer) === answerSlug);
-    if (m < 0) m = Math.max(0, CFG.mysteries.findIndex(x => x.label === d.l));
-    S = { cls: d.c || '', m, rows, elim: (d.e || []).map(i => rows[i] && rows[i].id).filter(Boolean) };
-    if (!rows.length) S.rows.push(blankRow());
-    save();
-    renderAll();
+    renderClassView();
+    renderPanel();
   }
 
   /* ---------- events ---------- */
+  $('#setupBtn').onclick = openPanel;
+  $('#closePanel').onclick = closePanel;
+  $('#veil').onclick = closePanel;
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#panel').hidden) closePanel(); });
+  // Keeps a lone Alt press from jumping focus to the browser menu on Windows
+  document.addEventListener('keyup', e => { if (e.key === 'Alt') e.preventDefault(); });
 
-  $('#cls').addEventListener('input', e => { S.cls = e.target.value; save(); });
-  $('#mystery').addEventListener('change', e => { S.m = +e.target.value; renderClass(); afterChange(true); });
-  $('#addRow').onclick = () => {
-    S.rows.push(blankRow());
-    afterChange(true);
-    const inputs = document.querySelectorAll('#rows .name');
-    inputs[inputs.length - 1].focus();
-  };
-  $('#shuffleIntro').onclick = () => {
-    const blanks = S.rows.filter(r => !r.name.trim());
-    S.rows = shuffle(filled()).concat(blanks);
-    afterChange(true);
-  };
-  $('#shuffleElim').onclick = () => { shuffle(S.elim); save(); renderElim(); };
-  $('#make').onclick = () => makeLink().catch(err => alert(err.message));
-  $('#copy').onclick = async () => {
-    try { await navigator.clipboard.writeText($('#link').value); }
-    catch (e) { $('#link').select(); document.execCommand('copy'); }
-    $('#copied').hidden = false;
-  };
-  $('#load').onclick = async () => {
-    try {
-      loadData(await C.decodeData($('#paste').value));
-      $('#loadMsg').textContent = 'Loaded. Make your changes, then create a new link.';
-      $('#paste').value = '';
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (e) {
-      $('#loadMsg').textContent = 'That doesn\u2019t look like a class link. Copy the whole link from your slides and try again.';
+  $('#addRow').onclick = addRow;
+
+  $('#start').onclick = async () => {
+    if (!canStart()) {
+      const b = $('#start');
+      b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake');
+      return;
     }
+    location.href = await gameUrl();
   };
-  $('#reset').onclick = () => {
-    if (!confirm('Clear this class and start over?')) return;
+
+  $('#pCls').addEventListener('change', e => setClass(e.target.value, M));
+  $('#pMystery').addEventListener('change', e => setClass(CLS, +e.target.value));
+
+  $('#makeGame').onclick = async () => {
+    if (!canStart()) { $('#gameMsg').textContent = 'Fix the items under Ready to start first.'; return; }
+    await copy(await gameUrl(), $('#gameOut'), $('#gameMsg'), 'Copied. Elimination order is locked in for this link.');
+  };
+
+  $('#makeSlide').onclick = async () => {
+    const c = $('#sCls').value.trim(), m = +$('#sMystery').value;
+    if (!c || m < 0) { $('#slideMsg').textContent = 'Type a class name and choose a mystery animal.'; return; }
+    const u = new URL('index.html', location.href);
+    u.search = ''; u.hash = '';
+    u.searchParams.set('c', c);
+    u.searchParams.set('m', m + 1);
+    await copy(u.href, $('#slideOut'), $('#slideMsg'), 'Copied. Paste it into your slide with Insert > Link.');
+  };
+
+  $('#load').onclick = async () => {
+    let d;
+    try { d = await C.decodeData($('#paste').value); }
+    catch (e) { $('#loadMsg').textContent = 'That isn\u2019t a game link. Copy the whole link and try again.'; return; }
+    const aSlug = C.slugify(d.a);
+    let m = CFG.mysteries.findIndex(x => C.slugify(x.answer) === aSlug);
+    if (m < 0) m = Math.max(0, CFG.mysteries.findIndex(x => x.label === d.l));
+    setClass(d.c || CLS || 'Class', m);
     nextId = 1;
-    S = blankState();
+    const rows = d.g.map((g, i) => ({ id: nextId++, name: g[0], tally: String(g[1]), fin: (d.f || []).includes(i) }));
+    S = { rows: rows.length ? rows : [blankRow()], elim: (d.e || []).map(i => rows[i] && rows[i].id).filter(Boolean), custom: true };
     save();
+    renderAll();
+    $('#paste').value = '';
+    $('#loadMsg').textContent = 'Loaded, with its elimination order kept as custom.';
+  };
+
+  $('#reset').onclick = () => {
+    if (!ready() || !confirm('Clear the guesses saved for ' + CLS + ', ' + answerLabel() + '?')) return;
+    try { localStorage.removeItem(draftKey()); } catch (e) {}
+    loadDraft();
     renderAll();
   };
 
   /* ---------- start ---------- */
-
   $('#lib').innerHTML = C.LIBRARY.map(e => '<option value="' + esc(e[0]) + '">').join('');
-  try {
-    const saved = JSON.parse(localStorage.getItem(DRAFT_KEY));
-    if (saved && Array.isArray(saved.rows)) {
-      S = saved;
-      nextId = Math.max(0, ...S.rows.map(r => r.id)) + 1;
-      if (!CFG.mysteries[S.m]) S.m = 0;
-    }
-  } catch (e) {}
+  loadDraft();
   renderAll();
 })();
 </script>
