@@ -132,8 +132,8 @@
   .photo .none { position: absolute; inset: 0; display: grid; place-items: center;
                  font-family: Rye, Rockwell, Georgia, serif; color: var(--navy); font-size: 40cqw; opacity: .35; }
   .name { flex: 0 0 min(20cqw, 12vh); display: grid; place-items: center; color: var(--navy); font-weight: 700;
-          font-size: min(11cqw, 7vh); line-height: 1; padding: 0 3cqw; text-align: center; white-space: nowrap;
-          overflow: hidden; text-overflow: ellipsis; }
+          font-size: calc(min(11cqw, 7vh) * var(--fs, 1)); line-height: 1.02; padding: 0 3cqw; text-align: center;
+          white-space: pre-line; overflow: hidden; }
   .tally { position: absolute; top: -8cqw; right: -8cqw; width: 32cqw; height: 32cqw; border-radius: 50%;
            background: var(--red); border: 2.5cqw solid var(--gold); display: grid; place-items: center;
            font-family: Rye, Rockwell, Georgia, serif; color: #fff; font-size: 15cqw;
@@ -176,17 +176,17 @@
                 white-space: nowrap; background: var(--red); padding: 1vh 3vw; border: 1.6vh dotted var(--gold);
                 border-radius: 2vh; text-shadow: 0 1vh 0 rgba(0,0,0,.35);
                 box-shadow: 0 0 8vh rgba(179,32,42,.9); }
-  #banner.slam { animation: veil 2.8s both; }
-  #banner.slam div { animation: slam 2.8s cubic-bezier(.2,1.4,.4,1) both; }
-  @keyframes veil { 0% { opacity: 0; } 6% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
+  /* The banner slams in and then holds until the next click */
+  #banner div { transform: rotate(-3deg); }
+  #banner.slam { animation: veil .25s both; }
+  #banner.slam div { animation: slam 1s cubic-bezier(.2,1.4,.4,1) both; }
+  @keyframes veil { from { opacity: 0; } to { opacity: 1; } }
   @keyframes slam {
     0% { transform: scale(3) rotate(-8deg); }
-    12% { transform: scale(1) rotate(-3deg); }
-    16% { transform: scale(1.04) rotate(-3deg) translateX(-1vw); }
-    20% { transform: scale(1) rotate(-3deg) translateX(1vw); }
-    24% { transform: scale(1) rotate(-3deg); }
-    85% { transform: scale(1) rotate(-3deg); }
-    100% { transform: scale(.6) rotate(-3deg); }
+    35% { transform: scale(1) rotate(-3deg); }
+    50% { transform: scale(1.04) rotate(-3deg) translateX(-1vw); }
+    65% { transform: scale(1) rotate(-3deg) translateX(1vw); }
+    80%, 100% { transform: scale(1) rotate(-3deg); }
   }
 
   /* ---------- controls ---------- */
@@ -464,6 +464,7 @@
     const f = [{ t: 'title' }];
     for (let i = 1; i <= N; i++) f.push({ t: 'intro', n: i });
     f.push({ t: 'banner' });
+    f.push({ t: 'board' });   // your click clears the banner to a clean board
     if (D.fo && !DN.length) {
       // Fossils round with no dinosaur: everyone turns to stone, then everyone is correct
       f.push({ t: 'fossilize' });
@@ -495,6 +496,7 @@
       case 'title': s.head = 'title'; break;
       case 'intro': for (let i = 0; i < fr.n; i++) s.vis.add(i); break;
       case 'banner': all(); break;
+      case 'board': all(); break;
       case 'elim': all(); D.e.slice(0, fr.n).forEach(i => s.vis.delete(i)); break;
       case 'final': fins(); s.mode = 'final'; s.tallies = false; s.head = 'final'; break;
       case 'spot':
@@ -787,8 +789,9 @@
     const el = document.createElement('div');
     el.className = 'tile';
     el.hidden = true;
-    el.innerHTML = '<div class="frame"><div class="photo"><div class="none">' + esc(name.trim().charAt(0).toUpperCase()) +
-      '</div></div><div class="name">' + esc(name) + '</div></div>' +
+    name = name.trim().toLowerCase();   // animal names always show in lowercase
+    el.innerHTML = '<div class="frame"><div class="photo"><div class="none">' + esc(name.charAt(0)) +
+      '</div></div><div class="name" data-text="' + esc(name) + '">' + esc(name) + '</div></div>' +
       (tally === null ? '' : '<div class="tally">' + esc(tally) + '</div>');
     const t = { el, timer: 0, ar: 1 };
     if (D.fo && tally !== null) {
@@ -826,6 +829,37 @@
     return t;
   }
 
+  // Sizes each card's name so it never gets cut off: one line if it fits at a
+  // readable size, otherwise two lines split at the best space, otherwise smaller.
+  // Sizes are fractions of the card width, so they hold at any card size.
+  function fitNames() {
+    const cx = document.createElement('canvas').getContext('2d');
+    cx.font = '700 100px Andika, "Trebuchet MS", sans-serif';
+    const em = t => cx.measureText(t).width / 100;
+    const BASE = 0.11;   // matches 11cqw in the CSS
+    const AVAIL = 0.85;  // card width left after border and padding, with a little margin
+    const TWO = 0.085;   // largest size that fits two lines in the name strip
+    tiles.forEach(t => {
+      const el = t.el.querySelector('.name');
+      const text = el.dataset.text || '';
+      let size = Math.min(BASE, AVAIL / Math.max(em(text), 0.01));
+      let shown = text;
+      const words = text.split(/\s+/);
+      if (size < 0.09 && words.length > 1) {
+        let bestW = Infinity, split = text;
+        for (let k = 1; k < words.length; k++) {
+          const a = words.slice(0, k).join(' '), b = words.slice(k).join(' ');
+          const w = Math.max(em(a), em(b));
+          if (w < bestW) { bestW = w; split = a + '\n' + b; }
+        }
+        const two = Math.min(TWO, AVAIL / bestW);
+        if (two > size) { size = two; shown = split; }
+      }
+      el.textContent = shown;
+      el.style.setProperty('--fs', (size / BASE).toFixed(3));
+    });
+  }
+
   function puff(r, kind) {
     for (let k = 0; k < 9; k++) {
       const p = document.createElement('div');
@@ -858,7 +892,7 @@
     if (s.head === 'fossilAns') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a) +
       '!</span><span class="sub">Any animal that can make a fossil is correct!</span></div>';
     if (s.head === 'aquaNone') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a) + '!</span></div>';
-    if (s.head === 'answer') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a) + '!</span></div>';
+    if (s.head === 'answer') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a.toLowerCase()) + '!</span></div>';
     const changed = !prev || prev.head !== s.head;
     if (changed) {
       h.innerHTML = html;
@@ -880,7 +914,6 @@
     }
   }
 
-  let bannerTimer = 0;
 
   function render(k, animate) {
     const s = stateFor(k);
@@ -928,17 +961,14 @@
     renderHead(s, animate, animate ? p : null);
     if (D.q) $('#aquarium').classList.toggle('on', !!s.aqua);
 
-    // ELIMINATION banner only plays going forward
-    clearTimeout(bannerTimer);
+    // ELIMINATION banner: slams in going forward, shows still when you step back to it,
+    // and stays up until you click
     const banner = $('#banner');
-    banner.hidden = true;
     banner.classList.remove('slam');
-    if (animate && frames[k].t === 'banner') {
-      banner.hidden = false;
+    banner.hidden = frames[k].t !== 'banner';
+    if (!banner.hidden) {
       fitBanner();
-      void banner.offsetWidth;
-      banner.classList.add('slam');
-      bannerTimer = setTimeout(() => { banner.hidden = true; banner.classList.remove('slam'); }, 2800);
+      if (animate) { void banner.offsetWidth; banner.classList.add('slam'); }
     }
 
     if (!animate) Confetti.clear();
@@ -1054,6 +1084,10 @@
 
     $('#titleWhich').textContent = D.l || '';
     $('#titleCls').textContent = D.c || '';
+    // Name sizing is cosmetic: if it fails for any reason, the game still runs
+    const safeFit = () => { try { fitNames(); } catch (e) {} };
+    safeFit();
+    if (document.fonts && document.fonts.load) document.fonts.load('700 100px Andika').then(safeFit, () => {});
     frames = buildFrames();
     computeBoard();
     render(0, false);
