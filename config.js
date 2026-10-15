@@ -10,7 +10,8 @@ window.CARNIVAL_CONFIG = {
     { label: 'Mystery Animal 2', answer: 'Tortoise' },
     // aquarium: true means every water animal the class guessed is a winner
     { label: 'Mystery Animal 3', answer: 'The Aquarium', aquarium: true },
-    { label: 'Mystery Animal 4', answer: 'Fossils' },
+    // fossils: true means every animal is correct and each one turns into a fossil
+    { label: 'Mystery Animal 4', answer: 'Fossils', fossils: true },
     { label: 'Mystery Animal 5', answer: 'Swan' }
   ],
 
