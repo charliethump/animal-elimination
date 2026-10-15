@@ -264,10 +264,13 @@
   const aquarium = () => !!(CFG.mysteries[M] || {}).aquarium;
   // Fossils round: every animal is correct, so no finalists or elimination order
   const fossils = () => !!(CFG.mysteries[M] || {}).fossils;
+  // ...unless the class guessed a dinosaur: then it's a normal round and every dinosaur is correct
+  const isDinoRow = r => r.dino === true || (r.dino !== false && C.isDino(r.name));
+  const dinoRound = () => fossils() && filled().some(isDinoRow);
   const isWaterRow = r => r.water === true || (r.water !== false && C.isWater(r.name));
-  const isAnswer = r => !!r.name.trim() && !fossils() &&
-    (aquarium() ? isWaterRow(r) : C.slugify(r.name) === C.slugify(answerName()));
-  const isFin = r => !!r.name.trim() && !fossils() && (aquarium() ? isWaterRow(r) : (r.fin || isAnswer(r)));
+  const isAnswer = r => !!r.name.trim() &&
+    (fossils() ? isDinoRow(r) : aquarium() ? isWaterRow(r) : C.slugify(r.name) === C.slugify(answerName()));
+  const isFin = r => !!r.name.trim() && (fossils() ? isDinoRow(r) : aquarium() ? isWaterRow(r) : (r.fin || isAnswer(r)));
   const filled = () => S.rows.filter(r => r.name.trim());
 
   function shuffle(a) {
@@ -305,8 +308,9 @@
     const now = Date.now();
     if (now - lastToggle < 350) return;   // Chromebooks can fire both click and right-click for Alt-click
     lastToggle = now;
-    if (!r.name.trim() || fossils()) return;
-    if (aquarium()) r.water = !isWaterRow(r);   // Alt-click means "counts as a water animal"
+    if (!r.name.trim()) return;
+    if (fossils()) r.dino = !isDinoRow(r);   // Alt-click means "counts as a dinosaur"
+    else if (aquarium()) r.water = !isWaterRow(r);   // Alt-click means "counts as a water animal"
     else if (isAnswer(r)) return;
     else r.fin = !r.fin;
     save();
@@ -315,7 +319,9 @@
   }
 
   function updateDot(d, r) {
-    const on = !!r.name.trim() && (aquarium()
+    const on = !!r.name.trim() && (fossils()
+      ? r.dino === true && !C.isDino(r.name)      // only dinosaurs you added yourself
+      : aquarium()
       ? r.water === true && !C.isWater(r.name)    // only water animals you added yourself
       : r.fin && !isAnswer(r));
     d.querySelector('.dot').classList.toggle('on', on);
@@ -351,6 +357,7 @@
         r.name = nameIn.value;
         r.live = null;
         r.water = undefined;
+        r.dino = undefined;
         updateThumb(d, r);
         updateDot(d, r);
         changed();
@@ -421,11 +428,13 @@
     if (!ready()) { out.push(['block', 'Choose a class name and mystery animal above.']); return out; }
     const rows = filled();
     const fins = rows.filter(isFin);
-    if (fossils()) {
+    if (fossils() && !dinoRound()) {
       if (rows.length < 2) out.push(['block', 'Add at least two animals.']);
     } else if (rows.length < 3) out.push(['block', 'Add at least three animals.']);
-    if (fossils()) {
+    if (fossils() && !dinoRound()) {
       // nothing to pick: everyone is correct
+    } else if (fossils()) {
+      if (rows.length >= 3 && fins.length === 1) out.push(['warn', 'Only one dinosaur. One more finalist will be picked at random for the final vote, and it disappears at the reveal.']);
     } else if (aquarium()) {
       if (rows.length >= 3 && !fins.length) out.push(['warn', 'No water animals yet. Two finalists will be picked at random, then the aquarium appears on its own.']);
       if (rows.length >= 3 && fins.length === 1) out.push(['warn', 'Only one water animal. One more finalist will be picked at random for the final vote, and it disappears at the reveal.']);
@@ -458,9 +467,10 @@
     // Fewer than two finalists marked: fill the rest at random
     const finIds = new Set(rows.filter(isFin).map(r => r.id));
     const pool = shuffle(rows.filter(r => !finIds.has(r.id)).map(r => r.id));
-    if (!fossils()) while (finIds.size < 2 && pool.length) finIds.add(pool.pop());   // always at least two in the final vote
+    const surprise = fossils() && !dinoRound();   // fossils round with no dinosaur: everyone is correct
+    if (!surprise) while (finIds.size < 2 && pool.length) finIds.add(pool.pop());   // always at least two in the final vote
     let order;
-    if (fossils()) order = [];
+    if (surprise) order = [];
     else if (S.custom) { repairElim(); order = S.elim.slice(); }
     else order = shuffle(nonFinalistIds());
     order = order.filter(id => !finIds.has(id));
@@ -471,6 +481,7 @@
       ai: answerPhoto || undefined,
       q: aquarium() ? 1 : undefined,
       fo: fossils() ? 1 : undefined,
+      dn: dinoRound() ? rows.map((r, i) => isDinoRow(r) ? i : -1).filter(i => i >= 0) : undefined,
       w: aquarium() ? rows.map((r, i) => isWaterRow(r) ? i : -1).filter(i => i >= 0) : undefined,
       f: rows.map((r, i) => finIds.has(r.id) ? i : -1).filter(i => i >= 0),
       e: order.map(id => idx[id])
@@ -504,10 +515,13 @@
     if (document.activeElement !== $('#pCls')) $('#pCls').value = CLS;
     $('#pMystery').innerHTML = mysteryOptions(M);
     $('#pAnswer').innerHTML = M < 0 ? '' : 'Correct answer: <b>' + esc(answerName()) + '</b>' +
-      (aquarium() ? ' (every water animal is correct)' : fossils() ? ' (every animal is correct)' : '');
-    $('#finCard').hidden = fossils();
-    $('#elimCard').hidden = fossils();
-    $('#finHint').textContent = aquarium()
+      (aquarium() ? ' (every water animal is correct)'
+        : dinoRound() ? '. A dinosaur was guessed, so this plays as a normal round and every dinosaur is correct.'
+        : fossils() ? '. No dinosaur guessed, so every animal is correct and they all turn into fossils.' : '');
+    $('#elimCard').hidden = fossils() && !dinoRound();
+    $('#finHint').textContent = fossils()
+      ? 'Fossils round: if the class guessed a dinosaur, it plays as a normal round and every dinosaur is correct. Alt-click a row on the class page to count it as a dinosaur, or to un-count one.'
+      : aquarium()
       ? 'Aquarium round: every water animal is a finalist and is correct. Alt-click a row on the class page to count it as a water animal, or to un-count one.'
       : 'Alt-click a row on the class page to mark or unmark it. The correct answer is always a finalist if the class guessed it. If fewer than two are marked, the rest are picked at random at Start.';
 
@@ -525,11 +539,12 @@
     }
 
     const fins = filled().filter(isFin);
-    const randomCount = aquarium()
+    const randomCount = fossils() && !dinoRound() ? 0 : (aquarium() || fossils())
       ? Math.max(0, Math.min(2, filled().length) - fins.length)
       : Math.max(0, Math.min(2, filled().length - 1) - fins.length);
     $('#finList').innerHTML =
-      fins.map(r => '<li>' + esc(r.name.trim()) + (isAnswer(r) ? (aquarium() ? ' (water animal)' : ' (correct answer)') : '') + '</li>').join('') +
+      fins.map(r => '<li>' + esc(r.name.trim()) + (isAnswer(r) ? (aquarium() ? ' (water animal)' : fossils() ? ' (dinosaur)' : ' (correct answer)') : '') + '</li>').join('') +
+      (fossils() && !fins.length ? '<li>No dinosaurs, so every animal is correct.</li>' : '') +
       (randomCount ? '<li>Plus ' + randomCount + ' picked at random when you press Start</li>' : '');
 
     renderElim();
@@ -645,7 +660,8 @@
     setClass(d.c || CLS || 'Class', m);
     nextId = 1;
     const rows = d.g.map((g, i) => ({ id: nextId++, name: g[0], tally: String(g[1]), fin: (d.f || []).includes(i), live: g[2] || null,
-      water: d.q ? (d.w || []).includes(i) : undefined }));
+      water: d.q ? (d.w || []).includes(i) : undefined,
+      dino: d.fo ? (d.dn || []).includes(i) : undefined }));
     S = { rows: rows.length ? rows : [blankRow()], elim: (d.e || []).map(i => rows[i] && rows[i].id).filter(Boolean), custom: true };
     save();
     renderAll();

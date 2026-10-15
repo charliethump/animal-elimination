@@ -156,6 +156,19 @@
   ]);
   function isWater(name) { return WATER.has(slugify(name)); }
 
+  // Dinosaurs (plus the prehistoric reptiles kids call dinosaurs) for the fossils
+  // round. Any of these turns the fossils round into a normal round.
+  const DINOS = new Set([
+    'dinosaur', 'dinosaurs', 'dino', 'dinos', 't-rex', 'trex', 't-rexes', 'tyrannosaurus', 'tyrannosaurus-rex',
+    'triceratops', 'stegosaurus', 'velociraptor', 'raptor', 'brontosaurus', 'brachiosaurus', 'diplodocus',
+    'spinosaurus', 'ankylosaurus', 'allosaurus', 'apatosaurus', 'iguanodon', 'parasaurolophus',
+    'pachycephalosaurus', 'carnotaurus', 'giganotosaurus', 'dilophosaurus', 'argentinosaurus',
+    'therizinosaurus', 'compsognathus', 'gallimimus', 'maiasaura', 'utahraptor', 'baryonyx',
+    'pterodactyl', 'pterodactylus', 'pteranodon', 'pterosaur', 'quetzalcoatlus',
+    'plesiosaur', 'plesiosaurus', 'mosasaur', 'mosasaurus', 'ichthyosaur', 'ichthyosaurus'
+  ]);
+  function isDino(name) { return DINOS.has(slugify(name)); }
+
   // Live photo lookup for animals that don't have a photo in the repo yet.
   // Only accepts Wikipedia pages for real living things (pages whose Wikidata
   // entry has a scientific name or taxon rank), so a silly or rude guess
@@ -186,5 +199,5 @@
     return liveCache[slug];
   }
 
-  window.Carnival = { LIBRARY, slugify, wikiTitleFor, findImage, findOnline, isWater, encodeData, decodeData };
+  window.Carnival = { LIBRARY, slugify, wikiTitleFor, findImage, findOnline, isWater, isDino, encodeData, decodeData };
 })();

@@ -456,7 +456,7 @@
   })();
 
   /* ================= data + frames ================= */
-  let D, frames = [], cur = 0, tiles = [], answerIdx = -1, ansTile = -1, W = [];
+  let D, frames = [], cur = 0, tiles = [], answerIdx = -1, ansTile = -1, W = [], DN = [];
   const RATIO = 1.2;   // tile height / width: square photo plus name strip
 
   function buildFrames() {
@@ -464,8 +464,8 @@
     const f = [{ t: 'title' }];
     for (let i = 1; i <= N; i++) f.push({ t: 'intro', n: i });
     f.push({ t: 'banner' });
-    if (D.fo) {
-      // Fossils round: everyone turns to stone, then everyone is correct
+    if (D.fo && !DN.length) {
+      // Fossils round with no dinosaur: everyone turns to stone, then everyone is correct
       f.push({ t: 'fossilize' });
       f.push({ t: 'what' });
       f.push({ t: 'fossilAns' });
@@ -475,7 +475,8 @@
     f.push({ t: 'final' });
     D.f.forEach((_, k) => f.push({ t: 'spot', k }));
     f.push({ t: 'drum' });
-    if (D.q) {
+    if (DN.length) f.push({ t: 'dinoIn' });
+    else if (D.q) {
       if (W.length) f.push({ t: 'aquaIn' });
       else { f.push({ t: 'vanish' }); f.push({ t: 'aquaOut' }); }
     }
@@ -507,6 +508,11 @@
       case 'fossilAns':
         all(); s.fossil = true; s.tallies = false; s.head = 'fossilAns';
         s.winners = new Set([...Array(N).keys()]);
+        break;
+      case 'dinoIn':
+        DN.forEach(i => s.vis.add(i));
+        s.mode = 'dino'; s.tallies = false; s.head = 'dinoAns'; s.winners = new Set(DN);
+        s.fossilSet = new Set(DN);
         break;
       case 'aquaIn':
         W.forEach(i => s.vis.add(i));
@@ -554,13 +560,15 @@
     return out;
   }
 
-  let boardSlots = [], finalSlots = [], aquaSlots = [];
+  let boardSlots = [], finalSlots = [], aquaSlots = [], dinoSlots = [];
   function computeBoard() {
     const a = boardArea();
     boardSlots = gridSlots(a, D.g.length, 0.8);
     finalSlots = D.f.length > 3 ? gridSlots(a, D.f.length, 0.85) : [];
     // Aquarium winners rest along the bottom of the screen, on the sand
     const H = innerHeight, Wd = innerWidth;
+    // Correct dinosaurs gather in the middle of the board
+    dinoSlots = gridSlots(a, DN.length, DN.length === 1 ? 0.7 : 0.8);
     aquaSlots = gridSlots({ x: Wd * 0.04, y: H * 0.42, w: Wd * 0.92, h: H * 0.56 }, W.length, 0.85, true);
   }
 
@@ -583,6 +591,10 @@
     if (s.mode === 'aqua') {
       const j = W.indexOf(i);
       if (j >= 0) return aquaSlots[j];
+    }
+    if (s.mode === 'dino') {
+      const j = DN.indexOf(i);
+      if (j >= 0) return dinoSlots[j];
     }
     if (s.mode !== 'board') {
       const j = D.f.indexOf(i);
@@ -700,11 +712,13 @@
 
     const KINDS = [ammonite, trilobite, fishFossil, skull, bones, footprint, shell];
     let bag = [];
+    let dinoTurn = 0;
     return {
       next() {
         if (!bag.length) bag = KINDS.slice().sort(() => Math.random() - 0.5);
         return bag.pop()();
-      }
+      },
+      dino() { return [skull, footprint, bones][dinoTurn++ % 3](); }
     };
   })();
 
@@ -780,7 +794,7 @@
     if (D.fo && tally !== null) {
       const art = document.createElement('div');
       art.className = 'fossil-art';
-      art.innerHTML = Fossils.next();
+      art.innerHTML = (D.dn || []).includes(i) ? Fossils.dino() : Fossils.next();
       el.querySelector('.photo').appendChild(art);
       el.style.setProperty('--d', (i * 0.15).toFixed(2) + 's');   // ripple across the board
       // Your own fossil picture, if fossils/<animal>.jpg exists
@@ -839,6 +853,7 @@
     if (s.head === 'vanish') html = '<div class="label">' + (D.f.length > 2 ? 'None of these!' : 'Neither one!') + '</div>';
     if (s.head === 'aqua') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a) +
       '!</span><span class="sub">Every water animal is correct!</span></div>';
+    if (s.head === 'dinoAns') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a) + '!</span></div>';
     if (s.head === 'what') html = '<div class="label">What happened to all the animals?!</div>';
     if (s.head === 'fossilAns') html = '<div><span class="small">The answer is</span><span class="big">' + esc(D.a) +
       '!</span><span class="sub">Any animal that can make a fossil is correct!</span></div>';
@@ -883,9 +898,11 @@
       el.style.opacity = s.faded.has(i) ? FADE : 1;
       el.classList.toggle('winner', s.winner === i || !!(s.winners && s.winners.has(i)));
       el.classList.toggle('no-tally', !s.tallies);
-      el.classList.toggle('fossil', !!s.fossil);
+      const isFossil = !!s.fossil || !!(s.fossilSet && s.fossilSet.has(i));
+      const wasFossil = !!(p && (p.fossil || (p.fossilSet && p.fossilSet.has(i))));
+      el.classList.toggle('fossil', isFossil);
       el.classList.remove('fossilizing');
-      if (animate && s.fossil && !(p && p.fossil) && s.vis.has(i)) {
+      if (animate && isFossil && !wasFossil && s.vis.has(i)) {
         void el.offsetWidth;
         el.classList.add('fossilizing');
         const delay = parseFloat(el.style.getPropertyValue('--d')) || 0;
@@ -930,11 +947,16 @@
       const sounds = { intro: 'appear', banner: 'elimination', elim: 'eliminate', final: 'finalvote',
                        spot: 'spotlight', drum: 'drumroll', revealIn: 'reveal', revealOut: 'reveal', vanish: 'wrong',
                        aquaIn: 'aquarium', aquaOut: 'aquarium',
-                       fossilize: 'fossilize', what: 'huh', fossilAns: 'reveal' };
+                       fossilize: 'fossilize', what: 'huh', fossilAns: 'reveal', dinoIn: 'fossilize' };
       if (sounds[t]) Sound.play(sounds[t]);
       if (t === 'revealIn' || t === 'revealOut') setTimeout(Confetti.burst, t === 'revealOut' ? 350 : 150);
       if (t === 'aquaIn' || t === 'aquaOut') setTimeout(burstBubbles, 900);
       if (t === 'fossilAns') setTimeout(Confetti.burst, 150);
+      // Dinosaur reveal: move to center, turn to stone, then the fanfare
+      if (t === 'dinoIn') {
+        const at = 1700 + DN.length * 250;
+        setTimeout(() => { if (frames[cur] && frames[cur].t === 'dinoIn') { Sound.play('reveal'); Confetti.burst(); } }, at);
+      }
     }
 
     if (!animate) {
@@ -1019,7 +1041,13 @@
       W = D.f.filter(i => wset.has(i));
       buildAquarium();
     }
+    // Fossils round with a dinosaur guessed: normal round, every dinosaur is correct
+    if (D.fo) {
+      const dset = new Set((D.dn || []).filter(i => i >= 0 && i < N));
+      DN = D.f.filter(i => dset.has(i));
+    }
     tiles = D.g.map((g, i) => makeTile(g[0], g[1], i, g[2]));
+    DN.forEach((i, j) => tiles[i].el.style.setProperty('--d', (0.8 + j * 0.25).toFixed(2) + 's'));
     answerIdx = D.g.findIndex(g => C.slugify(g[0]) === C.slugify(D.a));
     if (answerIdx >= 0) ansTile = answerIdx;
     else { tiles.push(makeTile(D.a, null, N, D.ai)); ansTile = N; }
