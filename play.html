@@ -170,6 +170,20 @@
   #stage.instant .tile.pop, #stage.instant .tile.poof { animation: none !important; }
 
   /* ---------- ELIMINATION banner ---------- */
+  /* ---------- "And the answer is…" searchlights ---------- */
+  #night { position: absolute; inset: 0; pointer-events: none; opacity: 0; overflow: hidden;
+           background: radial-gradient(ellipse 80% 60% at 50% 100%, #0B0E1E, #03040A 70%);
+           transition: opacity .25s; }
+  #night.on { opacity: .96; transition: opacity 1.4s; }
+  #night:not(.on) .beam { animation-play-state: paused; }
+  #stage.instant #night { transition: none; }
+  .beam { position: absolute; bottom: -4vh; width: 16vw; height: 125vh; margin-left: -8vw;
+          transform-origin: 50% 100%;
+          clip-path: polygon(50% 100%, 0 0, 100% 0);
+          background: linear-gradient(to top, rgba(255,246,214,.55), rgba(255,246,214,.18) 45%, rgba(255,246,214,0) 90%);
+          mix-blend-mode: screen; animation: sweep ease-in-out infinite alternate; }
+  @keyframes sweep { from { transform: rotate(var(--from)); } to { transform: rotate(var(--to)); } }
+
   #banner { position: absolute; inset: 0; display: grid; place-items: center; z-index: 20;
             background: rgba(10,12,30,.55); pointer-events: none; }
   #banner div { font-family: Rye, Rockwell, Georgia, serif; font-size: min(8vw, 22vh); color: #fff;
@@ -208,6 +222,13 @@
 </head>
 <body>
 <div id="stage">
+  <div id="night" aria-hidden="true">
+    <div class="beam" style="left:12%;--from:-28deg;--to:18deg;animation-duration:3.1s"></div>
+    <div class="beam" style="left:31%;--from:22deg;--to:-20deg;animation-duration:2.6s;animation-delay:-.8s"></div>
+    <div class="beam" style="left:50%;--from:-14deg;--to:14deg;animation-duration:3.6s;animation-delay:-1.9s"></div>
+    <div class="beam" style="left:69%;--from:20deg;--to:-22deg;animation-duration:2.8s;animation-delay:-.4s"></div>
+    <div class="beam" style="left:88%;--from:-18deg;--to:28deg;animation-duration:3.3s;animation-delay:-1.3s"></div>
+  </div>
   <div id="head"></div>
   <div id="title">
     <h1>Animal Elimination</h1>
@@ -241,9 +262,11 @@
   /* ================= sound ================= */
   // Drop a file named <sound>.mp3 into the sounds folder to replace any of these.
   const Sound = (function () {
-    const NAMES = ['appear', 'elimination', 'eliminate', 'finalvote', 'spotlight', 'drumroll', 'reveal', 'wrong', 'aquarium', 'fossilize', 'huh'];
+    const NAMES = ['appear', 'elimination', 'eliminate', 'finalvote', 'spotlight', 'drumroll', 'reveal', 'wrong', 'aquarium', 'fossilize', 'huh',
+                   'circusdrumroll', 'crash'];
     const files = {};
-    let ctx = null, master = null, muted = false, noiseBuf = null;
+    let ctx = null, master = null, out = null, muted = false, noiseBuf = null;
+    const active = {};   // built-in sounds currently playing, so they can be cut off
 
     NAMES.forEach(n => {
       const a = new Audio();
@@ -261,6 +284,7 @@
         master = ctx.createGain();
         master.gain.value = 0.55;
         master.connect(ctx.destination);
+        out = master;
       }
       if (ctx.state === 'suspended') ctx.resume();
     }
@@ -287,7 +311,7 @@
         fl.frequency.value = o.filter;
         n.connect(fl); fl.connect(g);
       } else n.connect(g);
-      g.connect(master);
+      g.connect(out);
       n.start(t);
       n.stop(t + (o.attack || 0.005) + dur + 0.05);
       return n;
@@ -310,7 +334,7 @@
       f.Q.value = o.q || 1;
       const g = ctx.createGain();
       env(g, t, o.attack || 0.002, vol, dur);
-      s.connect(f); f.connect(g); g.connect(master);
+      s.connect(f); f.connect(g); g.connect(out);
       s.start(t);
       s.stop(t + dur + 0.05);
     }
@@ -342,6 +366,21 @@
       spotlight(t) {
         osc('sine', midi(88), t, 0.9, 0.25);
         osc('sine', midi(95), t, 0.6, 0.08);
+      },
+      circusdrumroll(t) {
+        // Built-in stand-in for circusdrumroll.mp3: a long snare roll that builds
+        const len = 12;
+        for (let x = 0; x < len; x += 0.045) {
+          const v = 0.06 + 0.26 * Math.min(1, x / 6);
+          noise(t + x, 0.06, v, { freq: 1800, q: 0.8 });
+        }
+        osc('sine', 70, t, len, 0.12, { attack: 1.5 });
+      },
+      crash(t) {
+        noise(t, 2.2, 0.6, { type: 'highpass', freq: 4500 });
+        noise(t, 0.6, 0.45, { freq: 900, to: 300, q: 0.8 });
+        noise(t, 0.3, 0.55, { type: 'lowpass', freq: 220 });
+        osc('sine', 85, t, 0.7, 0.8, { to: 38 });
       },
       drumroll(t) {
         const len = 2.0;
@@ -375,7 +414,7 @@
         osc('triangle', midi(72), t + 0.28, 0.45, 0.25, { to: midi(79), attack: 0.02 });
       },
       aquarium(t) {
-        SYN.reveal(t);
+        // bubbles (the crash before it is the big moment)
         for (let i = 0; i < 16; i++) {
           const f = 400 + Math.random() * 900;
           osc('sine', f, t + 0.35 + i * 0.11 + Math.random() * 0.05, 0.09, 0.12, { to: f * 1.9 });
@@ -404,14 +443,30 @@
       }
       try {
         start();
-        if (ctx && SYN[n]) SYN[n](ctx.currentTime + 0.02);
+        if (!ctx || !SYN[n]) return;
+        const bus = ctx.createGain();
+        bus.connect(master);
+        out = bus;
+        try { SYN[n](ctx.currentTime + 0.02); } finally { out = master; }
+        active[n] = bus;
       } catch (e) { /* a sound problem should never stop the game */ }
+    }
+
+    // Cuts a sound off immediately, whether it's your mp3 or the built-in one
+    function stop(n) {
+      if (files[n]) { files[n].pause(); try { files[n].currentTime = 0; } catch (e) {} }
+      const bus = active[n];
+      if (bus && ctx) {
+        bus.gain.setTargetAtTime(0, ctx.currentTime, 0.015);
+        setTimeout(() => { try { bus.disconnect(); } catch (e) {} }, 200);
+        delete active[n];
+      }
     }
 
     function stopFiles() { Object.values(files).forEach(a => a.pause()); }
 
     return {
-      start, play, stopFiles,
+      start, play, stop, stopFiles,
       toggle() { muted = !muted; if (muted) stopFiles(); return muted; }
     };
   })();
@@ -959,6 +1014,8 @@
     });
 
     renderHead(s, animate, animate ? p : null);
+    if (frames[k].t !== 'drum') Sound.stop('circusdrumroll');
+    $('#night').classList.toggle('on', frames[k].t === 'drum' && !D.fo);
     if (D.q) $('#aquarium').classList.toggle('on', !!s.aqua);
 
     // ELIMINATION banner: slams in going forward, shows still when you step back to it,
@@ -978,6 +1035,15 @@
                        spot: 'spotlight', drum: 'drumroll', revealIn: 'reveal', revealOut: 'reveal', vanish: 'wrong',
                        aquaIn: 'aquarium', aquaOut: 'aquarium',
                        fossilize: 'fossilize', what: 'huh', fossilAns: 'reveal', dinoIn: 'fossilize' };
+      // "And the answer is…" uses the circus drumroll and searchlights, except in the fossils round
+      const showtime = !D.fo;
+      if (t === 'drum' && showtime) sounds.drum = 'circusdrumroll';
+      const fromDrum = showtime && k > 0 && frames[k - 1].t === 'drum';
+      if (fromDrum) {
+        Sound.play('crash');
+        if (t === 'revealIn' || t === 'revealOut') delete sounds[t];   // the crash is the payoff
+        if (t === 'vanish') { delete sounds.vanish; setTimeout(() => { if (frames[cur].t === 'vanish') Sound.play('wrong'); }, 600); }
+      }
       if (sounds[t]) Sound.play(sounds[t]);
       if (t === 'revealIn' || t === 'revealOut') setTimeout(Confetti.burst, t === 'revealOut' ? 350 : 150);
       if (t === 'aquaIn' || t === 'aquaOut') setTimeout(burstBubbles, 900);
