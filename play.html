@@ -267,11 +267,30 @@
     const files = {};
     let ctx = null, master = null, out = null, muted = false, noiseBuf = null;
     const active = {};   // built-in sounds currently playing, so they can be cut off
+    const skip = {};     // seconds of silence at the start of each uploaded mp3
+
+    // Finds where the sound actually starts in an uploaded file, so dead air
+    // at the front is skipped. Leaves a hair of lead-in so nothing gets clipped.
+    function measureLead(n, url) {
+      const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      if (!OAC || !window.fetch) return;
+      fetch(url).then(r => r.arrayBuffer())
+        .then(buf => new OAC(1, 44100, 44100).decodeAudioData(buf))
+        .then(audio => {
+          let first = audio.length;
+          for (let c = 0; c < audio.numberOfChannels; c++) {
+            const d = audio.getChannelData(c);
+            for (let i = 0; i < first; i++) if (Math.abs(d[i]) > 0.02) { first = i; break; }
+          }
+          if (first < audio.length) skip[n] = Math.max(0, first / audio.sampleRate - 0.02);
+        })
+        .catch(() => {});
+    }
 
     NAMES.forEach(n => {
       const a = new Audio();
       a.preload = 'auto';
-      a.addEventListener('canplaythrough', () => { files[n] = a; }, { once: true });
+      a.addEventListener('canplaythrough', () => { files[n] = a; measureLead(n, a.src); }, { once: true });
       a.addEventListener('error', () => {}, { once: true });
       a.src = 'sounds/' + n + '.mp3';
     });
@@ -437,7 +456,7 @@
       if (muted) return;
       if (files[n]) {
         const a = files[n];
-        try { a.currentTime = 0; } catch (e) {}
+        try { a.currentTime = skip[n] || 0; } catch (e) {}   // jump past any silence at the start
         a.play().catch(() => {});
         return;
       }
