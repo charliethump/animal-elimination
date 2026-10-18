@@ -55,6 +55,7 @@
            font-family: Rye, Rockwell, Georgia, serif; font-size: 28px; }
   .thumb img { width: 100%; height: 100%; object-fit: cover; }
   .row input { font-size: 22px; padding: 8px 12px; width: 100%; }
+  .row .name { text-transform: lowercase; }
   .row .votes { text-align: center; }
   .row .del { padding: 4px 0; width: 40px; color: var(--soft); }
   .cv-buttons { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; gap: 12px; }
@@ -138,6 +139,9 @@
         <label class="field">Mystery animal <select id="pMystery"></select></label>
       </div>
       <p class="answer" id="pAnswer"></p>
+      <button id="slideThis">Copy slide link for this class</button>
+      <input class="out" id="slideThisOut" readonly hidden aria-label="Slide link for this class">
+      <p class="msg" id="slideThisMsg"></p>
     </section>
 
     <section class="card">
@@ -476,8 +480,8 @@
     order = order.filter(id => !finIds.has(id));
     return {
       v: 1, c: CLS, l: answerLabel(), a: answerName(),
-      g: rows.map((r, i) => photos[i] ? [r.name.trim(), parseInt(r.tally, 10) || 0, photos[i]]
-                                       : [r.name.trim(), parseInt(r.tally, 10) || 0]),
+      g: rows.map((r, i) => photos[i] ? [r.name.trim().toLowerCase(), parseInt(r.tally, 10) || 0, photos[i]]
+                                       : [r.name.trim().toLowerCase(), parseInt(r.tally, 10) || 0]),
       ai: answerPhoto || undefined,
       q: aquarium() ? 1 : undefined,
       fo: fossils() ? 1 : undefined,
@@ -543,7 +547,7 @@
       ? Math.max(0, Math.min(2, filled().length) - fins.length)
       : Math.max(0, Math.min(2, filled().length - 1) - fins.length);
     $('#finList').innerHTML =
-      fins.map(r => '<li>' + esc(r.name.trim()) + (isAnswer(r) ? (aquarium() ? ' (water animal)' : fossils() ? ' (dinosaur)' : ' (correct answer)') : '') + '</li>').join('') +
+      fins.map(r => '<li>' + esc(r.name.trim().toLowerCase()) + (isAnswer(r) ? (aquarium() ? ' (water animal)' : fossils() ? ' (dinosaur)' : ' (correct answer)') : '') + '</li>').join('') +
       (fossils() && !fins.length ? '<li>No dinosaurs, so every animal is correct.</li>' : '') +
       (randomCount ? '<li>Plus ' + randomCount + ' picked at random when you press Start</li>' : '');
 
@@ -556,7 +560,7 @@
       const missing = names.filter((n, i) => !found[i]);
       const online = await Promise.all(missing.map(n => C.findOnline(n)));
       $('#missingCard').hidden = !missing.length;
-      $('#missingList').innerHTML = missing.map((n, i) => '<li><code>' + esc(C.slugify(n)) + '.jpg</code> for ' + esc(n) +
+      $('#missingList').innerHTML = missing.map((n, i) => '<li><code>' + esc(C.slugify(n)) + '.jpg</code> for ' + esc(n.toLowerCase()) +
         (online[i] ? ' (using an online photo for now)' : ' (no photo found, shows a letter card)') + '</li>').join('');
       $('#findMissing').href = 'library.html?add=' + encodeURIComponent(missing.join(','));
     }, 250);
@@ -581,7 +585,7 @@
     list.innerHTML = '';
     S.elim.forEach((id, i) => {
       const li = document.createElement('li');
-      li.innerHTML = '<span>' + esc(byId[id].name.trim()) + '</span>' +
+      li.innerHTML = '<span>' + esc(byId[id].name.trim().toLowerCase()) + '</span>' +
         '<button aria-label="Move up"' + (i === 0 ? ' disabled' : '') + '>&#9650;</button>' +
         '<button aria-label="Move down"' + (i === S.elim.length - 1 ? ' disabled' : '') + '>&#9660;</button>';
       const [up, down] = li.querySelectorAll('button');
@@ -598,6 +602,7 @@
     $('#sCls').value = CLS;
     $('#gameOut').hidden = true; $('#gameMsg').textContent = '';
     $('#slideOut').hidden = true; $('#slideMsg').textContent = '';
+    $('#slideThisOut').hidden = true; $('#slideThisMsg').textContent = '';
     $('#loadMsg').textContent = '';
     renderPanel();
     $('#closePanel').focus();
@@ -636,18 +641,34 @@
   $('#pMystery').addEventListener('change', e => setClass(CLS, +e.target.value));
 
   $('#makeGame').onclick = async () => {
-    if (!canStart()) { $('#gameMsg').textContent = 'Fix the items under Ready to start first.'; return; }
+    if (!canStart()) {
+      $('#gameMsg').textContent = filled().length
+        ? 'Fix the items under Ready to start first.'
+        : 'A game link needs the class\u2019s guesses. To link a blank class from your slides, use Copy slide link for this class at the top.';
+      return;
+    }
     await copy(await gameUrl(), $('#gameOut'), $('#gameMsg'), 'Copied. Elimination order is locked in for this link.');
+  };
+
+  // A slide link only needs a class name and mystery animal; no guesses required
+  function slideUrl(c, m) {
+    const u = new URL('index.html', location.href);
+    u.search = ''; u.hash = '';
+    u.searchParams.set('c', c);
+    u.searchParams.set('m', m + 1);
+    return u.href;
+  }
+
+  $('#slideThis').onclick = async () => {
+    const c = ($('#pCls').value || CLS).trim();
+    if (!c || M < 0) { $('#slideThisMsg').textContent = 'Type a class name and choose a mystery animal first.'; return; }
+    await copy(slideUrl(c, M), $('#slideThisOut'), $('#slideThisMsg'), 'Copied. Paste it into your slide with Insert > Link.');
   };
 
   $('#makeSlide').onclick = async () => {
     const c = $('#sCls').value.trim(), m = +$('#sMystery').value;
     if (!c || m < 0) { $('#slideMsg').textContent = 'Type a class name and choose a mystery animal.'; return; }
-    const u = new URL('index.html', location.href);
-    u.search = ''; u.hash = '';
-    u.searchParams.set('c', c);
-    u.searchParams.set('m', m + 1);
-    await copy(u.href, $('#slideOut'), $('#slideMsg'), 'Copied. Paste it into your slide with Insert > Link.');
+    await copy(slideUrl(c, m), $('#slideOut'), $('#slideMsg'), 'Copied. Paste it into your slide with Insert > Link.');
   };
 
   $('#load').onclick = async () => {
@@ -677,7 +698,7 @@
   };
 
   /* ---------- start ---------- */
-  $('#lib').innerHTML = C.LIBRARY.map(e => '<option value="' + esc(e[0]) + '">').join('');
+  $('#lib').innerHTML = C.LIBRARY.map(e => '<option value="' + esc(e[0].toLowerCase()) + '">').join('');
   loadDraft();
   renderAll();
 })();
